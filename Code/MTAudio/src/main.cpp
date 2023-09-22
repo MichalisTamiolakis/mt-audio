@@ -509,9 +509,6 @@ void onBandManBtn()
             case AudioSource::FM2:
                 fsm.changeAudioSource(AudioSource::Aux);
                 break;
-            case AudioSource::FMBst:
-                fsm.changeAudioSource(AudioSource::FM1);
-                break;
             case AudioSource::Aux:
                 fsm.changeAudioSource(AudioSource::Bluetooth);
                 break;
@@ -520,6 +517,12 @@ void onBandManBtn()
                 break;
             case AudioSource::USB:
                 fsm.changeAudioSource(AudioSource::SD);
+                break;
+            case AudioSource::SD:
+                fsm.changeAudioSource(AudioSource::FM1);
+                break;
+            case AudioSource::FMBst:
+                fsm.changeAudioSource(AudioSource::FM1);
                 break;
         }
     }
