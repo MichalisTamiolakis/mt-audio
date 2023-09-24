@@ -10,6 +10,10 @@ class FSM
 public:
     FSM();
 
+    SeekMode seekMode = SeekMode::Auto;
+    FMBand fmBand = FMBand::FM1;
+    bool isStationSaved = false; // Is the current tuned station saved in the band specified by fmBand?
+    
     void loop();
     SystemState getSystemState();
     SystemMode getSystemMode();

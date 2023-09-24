@@ -54,8 +54,8 @@ void DisplayManager::displayTurnOn()
     lcd->clear();
 
     lcd->setCursor(0,1);
-    lcd->print("      MT Audio     ");
-    lcd->print("      Welcome      ");
+    lcd->print("       MT Audio     ");
+    lcd->print("       Welcome      ");
 
     Serial.println("[Display]: Turn on screen");
 }
@@ -67,7 +67,7 @@ void DisplayManager::displayVolume()
     this->clearLine(3);
 
     lcd->setCursor(0,1);
-    lcd->print("       Volume        ");
+    lcd->print("       VOLUME        ");
 
     Serial.println("[Display]: Volume screen");
 
@@ -76,7 +76,7 @@ void DisplayManager::displayVolume()
 void DisplayManager::updateVolume(uint8_t volume)
 {
     lcd->setCursor(0,2);
-    lcd->printf("         %2d         ", volume);
+    lcd->printf("         %02d         ", volume);
     Serial.println("[Display]: Update volume");
 }
 
@@ -120,29 +120,20 @@ void DisplayManager::displayIdle(AudioSource source)
     this->clearLine(2);
     this->clearLine(3);
 
-    lcd->setCursor(0,2);
+    lcd->setCursor(0,1);
     switch (source)
     {
-        case AudioSource::FM1:
-            lcd->print("        FM1        ");
-            Serial.println("[Display]: Idle FM1 screen");
-            break;
-        case AudioSource::FM2:
-            lcd->print("        FM2        ");
-            Serial.println("[Display]: Idle FM2 screen");
-            break;
-        case AudioSource::FMBst:
-            lcd->print("       FMBst       ");
-            Serial.println("[Display]: Idle FMBst screen");
+        case AudioSource::Aux:
+            lcd->print("        AUX        ");
             break;
         case AudioSource::Bluetooth:
-            lcd->print("     Bluetooth     ");
+            lcd->print("     BLUETOOTH     ");
             break;
         case AudioSource::USB:
             lcd->print("        USB        ");
             break;
         case AudioSource::SD:
-            lcd->print("         SD        ");
+            lcd->print("      SD CARD      ");
             break;
     }
     // lcd->setCursor(1,0);
@@ -153,20 +144,110 @@ void DisplayManager::displayIdle(AudioSource source)
     // lcd->printf("        %d          ", FMStationNumber);
 }
 
-void DisplayManager::displayBluetooth()
+void DisplayManager::updateFM(uint16_t frequency, FMBand savedBand, const char* serviceName, const char* radioText)
 {
+    clearLine(1);
+    float freqFloat = (float)frequency / 100.0f;
+    lcd->setCursor(0,1);    
+    switch(savedBand)
+    {
+        case FMBand::FM:
+            lcd->print("      ");
+            break;
+        case FMBand::FM1:
+            lcd->print("    FM1 ");
+            break;
+        case FMBand::FM2:
+            lcd->print("    FM2 ");
+            break;
+        case FMBand::FMBst:
+            lcd->print("    BST ");
+            break;
+    }
+    lcd->printf("%2.2f MHz", freqFloat);
+
+    if(serviceName != nullptr)
+    {
+        clearLine(2);
+        lcd->setCursor(0,2);
+        lcd->printf("      %s      ", serviceName);
+    }
+
+    if(radioText != nullptr)
+    {
+        clearLine(3);
+        // TODO: Add scrolling text for radio text
+        // lcd->setCursor(0,3);
+        // lcd->printf("   %s", radioText);
+    }
 }
 
-void DisplayManager::displayUSB()
+void DisplayManager::displayInputSelection()
 {
+    lcd->setCursor(0,1);
+    lcd->print("       INPUT:        ");
+    this->clearLine(2);
+    this->clearLine(3);
 }
 
-void DisplayManager::displaySD()
+void DisplayManager::updateInputSelection(AudioSource source, FMBand fmBand)
 {
+
+    lcd->setCursor(0,2);
+    switch(source){
+        case AudioSource::Radio:
+            switch (fmBand)
+            {
+                case FMBand::FM:
+                case FMBand::FM1:
+                    lcd->print("      RADIO FM1     ");
+                    break;
+                case FMBand::FM2:
+                    lcd->print("      RADIO FM2     ");
+                    break;
+                case FMBand::FMBst:
+                    lcd->print("BEST SIGNAL STATIONS");
+                    break;
+            }
+            break;
+        case AudioSource::Aux:
+            lcd->print("        AUX         ");
+            break;
+        case AudioSource::Bluetooth:
+            lcd->print("     BLUETOOTH      ");
+            break;
+        case AudioSource::USB:
+            lcd->print("        USB         ");
+            break;
+        case AudioSource::SD:
+            lcd->print("      SD CARD       ");
+            break;
+      }
 }
 
-void DisplayManager::displayAux()
+void DisplayManager::displayStationSave()
 {
+    lcd->setCursor(0,1);
+    lcd->printf("  STATION SAVED IN: ");
+    clearLine(2);
+    clearLine(3);
+}
+
+void DisplayManager::updateStationSave(uint16_t frequency, FMBand fmBand)
+{
+    lcd->setCursor(0,2);
+    switch(fmBand)
+    {
+        case FMBand::FM1:
+            lcd->print("        FM1         ");
+            break;
+        case FMBand::FM2:
+            lcd->print("        FM2         ");
+            break;
+        case FMBand::FMBst:
+            lcd->print("        BST         ");
+            break;
+    }
 }
 
 void DisplayManager::clearLine(int lineNo)

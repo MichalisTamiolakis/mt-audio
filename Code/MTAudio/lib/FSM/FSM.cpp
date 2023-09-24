@@ -10,8 +10,8 @@ FSM::FSM()
     this->currentMode = SystemMode::Idle;
     this->currentState = SystemState::Off;
     
-    this->previousSource = AudioSource::FM1;
-    this->currentSource = AudioSource::FM1;
+    this->previousSource = AudioSource::Radio;
+    this->currentSource = AudioSource::Radio;
 
     this->onSystemStateChangedCb = nullptr;
     this->onSystemModeChangedCb = nullptr;
@@ -78,6 +78,12 @@ void FSM::changeSystemMode(SystemMode newMode)
             startTimeTransition(5000, SystemMode::Idle);
             break;
         case SystemMode::Volume:
+            startTimeTransition(2000, SystemMode::Idle);
+            break;
+        case SystemMode::InputSelection:
+            startTimeTransition(2000, SystemMode::Idle);
+            break;
+        case SystemMode::StationSave:
             startTimeTransition(2000, SystemMode::Idle);
             break;
     }
@@ -215,14 +221,8 @@ void FSM::print()
     Serial.print("], A[");
     switch(this->currentSource)
     {
-        case AudioSource::FM1:
-            Serial.print("FM1");
-            break;
-        case AudioSource::FM2:
-            Serial.print("FM2");
-            break;
-        case AudioSource::FMBst:
-            Serial.print("FMBst");
+        case AudioSource::Radio:
+            Serial.print("Radio");
             break;
         case AudioSource::Aux:
             Serial.print("Aux");

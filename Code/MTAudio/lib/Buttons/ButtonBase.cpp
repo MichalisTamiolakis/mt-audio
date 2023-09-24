@@ -1,10 +1,10 @@
 #include "ButtonBase.h"
 
-ButtonBase::ButtonBase(uint32_t debounceDelay, uint32_t longPressDelay, bool allowRepeat)
+ButtonBase::ButtonBase(uint8_t buttonType, uint32_t debounceDelay, uint32_t functionDelay)
 {
-    this->debounce_delay = debounceDelay;
-    this->repetitive = allowRepeat;
-    this->longPressDelay = longPressDelay;
+    this->buttonType = buttonType;
+    this->debounceDelay = debounceDelay;
+    this->longPressDelay = functionDelay;
 }
 
 void ButtonBase::press()
@@ -24,52 +24,71 @@ void ButtonBase::updateState(bool newState)
 
 void ButtonBase::loop()
 {
+    uint32_t currentTime = millis();
+    
     // State changed
     if(previousState!=state)
     {
-        stateChangeTimestamp = millis();
-        repetitionStartTime = millis();
-        firstPressEventTriggered = false;
-        long_press_event_triggered = false;
-        previousState = state;
+        stateChangeTimestamp = currentTime;
     }
+    previousState = state;
 
-    uint32_t currentTime = millis();
-    if(state && currentTime-stateChangeTimestamp >= debounce_delay)
+    // Debounce logic
+    if (currentTime - stateChangeTimestamp > debounceDelay)
     {
-        if(!repetitive)
+        previousDebouncedState = debouncedState;
+        debouncedState = state;
+    
+        // Pressed at this moment
+        if (debouncedState && !previousDebouncedState)
         {
-            if(!firstPressEventTriggered)
+            switch (this->buttonType)
             {
-                firstPressEventTriggered = true;
-
-                // Call on press
-                sendPress();
+                case BUTTON_REPEAT:
+                case BUTTON_SINGLE:
+                    sendPress();
+                    break;
+                case BUTTON_LONG:
+                    longPressSent = false;
+                    break;
             }
 
-            if(!long_press_event_triggered && currentTime - stateChangeTimestamp >= longPressDelay)
-            {
-                long_press_event_triggered = true;
+            pressedTime = currentTime;
+        }
 
-                // Call on long press
-                sendLongPress();
+        // Released at this moment
+        else if(!debouncedState && previousDebouncedState)
+        {
+            switch (this->buttonType)
+            {
+                // Check if should send the single press event
+                case BUTTON_LONG:
+                    if(currentTime - pressedTime < longPressDelay)
+                    {
+                        sendPress();
+                    }
+                    break;
             }
         }
-        else
+
+        if(debouncedState)
         {
-            if(!firstPressEventTriggered)
+            switch (this->buttonType)
             {
-                firstPressEventTriggered = true;
-
-                // Call on press
-                sendPress();
-            }
-            else if(currentTime - repetitionStartTime >= longPressDelay)
-            {
-                repetitionStartTime = currentTime;
-
-                // Call on press
-                sendPress();
+                case BUTTON_REPEAT:
+                    if(currentTime - pressedTime >= longPressDelay)
+                    {
+                        sendPress();
+                        pressedTime = currentTime;
+                    }
+                    break;
+                case BUTTON_LONG:
+                    if(currentTime - pressedTime >= longPressDelay && !longPressSent)
+                    {
+                        longPressSent = true;
+                        sendLongPress();
+                    }
+                    break;
             }
         }
     }

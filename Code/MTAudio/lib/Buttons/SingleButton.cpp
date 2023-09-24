@@ -1,7 +1,7 @@
 #include "SingleButton.h"
 
-SingleButton::SingleButton(uint8_t pin, uint32_t debounceDelay, uint32_t longPressDelay, bool allowRepeat) : 
-    ButtonBase(debounceDelay, longPressDelay, allowRepeat)
+SingleButton::SingleButton(uint8_t buttonType, uint8_t pin, uint32_t debounceDelay, uint32_t functionDelay) : 
+    ButtonBase(buttonType, debounceDelay, functionDelay)
 {
     this->pin = pin;
     pinMode(pin, INPUT_PULLDOWN);
@@ -11,7 +11,7 @@ SingleButton::SingleButton(uint8_t pin, uint32_t debounceDelay, uint32_t longPre
 
 void SingleButton::loop()
 {
-    ButtonBase::updateState(digitalRead(pin));
+    ButtonBase::updateState(digitalRead(pin) == HIGH);
     ButtonBase::loop();
 }
 

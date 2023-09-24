@@ -8,8 +8,8 @@
 
 // SI4703
 #include <radio.h>
-// #include <RDSParser.h>
 #include <SI4703.h>
+#include <RDSParser.h>
 
 // TDA7313
 #include <Tda7313.h>
@@ -25,9 +25,9 @@
 #define PWR_ENABLE 15
 #define BTN_BACKLIGHT 4
 #define SCREEN_BACKLIGHT 2
+#define SDA_PIN 21
+#define SCL_PIN 22
 #define RADIO_RST 19
-#define SDA 21
-#define SCL 22
 
 // Input
 #define S_IGNITION 32
@@ -67,66 +67,86 @@
 #define AUDIO_IN_BT_USB_SD 1
 #define AUDIO_IN_AUX 3
 
+// Generic Settings
+#define SAVE_STATION_PAUSE 300 // 300 ms pause when saving station 
+
 // Function Declarations
 void onIgnitionOn();
 void onIgnitionOff();
-void onPowerBtn();
+void togglePower();
 void onClockSetBtn();
 void onClockOkBtn();
-void onVolumeIncreaseBtn();
-void onVolumeDecreaseBtn();
-void onBasBalBtn();
-void onTreFadBtn();
-void onBstLdnBtn();
-void onTaBtn();
+void increaseVolume();
+void decreaseVolume();
+void openBassAndBalanceSettings();
+void openTrebleAndFadeSettings();
+void toggleLoudness();
+void toggleTraficAnnouncements();
 void onDownBtn();
 void onUpBtn();
-void onBandManBtn();
-void onAstBtn();
-void onN1Btn();
-void onN2Btn();
-void onN3Btn();
-void onN4Btn();
-void onN5Btn();
-void onN6Btn();
+void selectNextInput();
+void findBestStations();
+void selectStationN1();
+void saveStationToN1();
+void selectStationN2();
+void saveStationToN2();
+void selectStationN3();
+void saveStationToN3();
+void selectStationN4();
+void saveStationToN4();
+void selectStationN5();
+void saveStationToN5();
+void selectStationN6();
+void saveStationToN6();
 
 void onSystemStateChanged(SystemState newState, SystemState prevState);
 void onSystemModeChanged(SystemMode newMode, SystemMode prevMode);
 void onAudioSourceChanged(AudioSource newSource, AudioSource prevSource);
 
-void processRDS(uint16_t block1, uint16_t block2, uint16_t block3, uint16_t block4);
-void updateRDS(const char* stationName);
+// Radio
+void InitRadio();
+void StopRadio();
+void RDSProcess(uint16_t blockA, uint16_t blockB, uint16_t blockC, uint16_t blockD);
+void RDSServiceNameUpdate(const char *serviceName);
+void RDSRadioTextUpdate(const char *radioText);
+void RDSClear();
 
 // FSM state changes
 FSM fsm = FSM();
 
 // Display
-DisplayManager* display;
+DisplayManager *display;
 
 // All the buttons
-SingleButton* powerBtn;
-SingleButton* clockSetBtn;
-SingleButton* clockOkBtn;
-MultiplexedButton* volumeUpBtn;
-MultiplexedButton* volumeDownBtn;
-MultiplexedButton* basBalBtn;
-MultiplexedButton* treFadBtn;
-MultiplexedButton* bstLdnBtn;
-MultiplexedButton* taBtn;
-MultiplexedButton* downBtn;
-MultiplexedButton* upBtn;
-MultiplexedButton* bandManBtn;
-MultiplexedButton* astBtn;
-MultiplexedButton* n1Btn;
-MultiplexedButton* n2Btn;
-MultiplexedButton* n3Btn;
-MultiplexedButton* n4Btn;
-MultiplexedButton* n5Btn;
-MultiplexedButton* n6Btn;
+SingleButton *powerBtn;
+SingleButton *clockSetBtn;
+SingleButton *clockOkBtn;
+MultiplexedButton *volumeUpBtn;
+MultiplexedButton *volumeDownBtn;
+MultiplexedButton *basBalBtn;
+MultiplexedButton *treFadBtn;
+MultiplexedButton *bstLdnBtn;
+MultiplexedButton *taBtn;
+MultiplexedButton *downBtn;
+MultiplexedButton *upBtn;
+MultiplexedButton *bandManBtn;
+MultiplexedButton *astBtn;
+MultiplexedButton *n1Btn;
+MultiplexedButton *n2Btn;
+MultiplexedButton *n3Btn;
+MultiplexedButton *n4Btn;
+MultiplexedButton *n5Btn;
+MultiplexedButton *n6Btn;
 
 // Radio
-// SI4703 radio = SI4703();
-// RDSParser rds = RDSParser();
+SI4703 radio;
+RDSParser rdsParser;
+uint16_t stationAtShutdown = 8870;
+uint16_t savedStations[3][6] =
+    {
+        {8870, 8870, 8870, 8870, 8870, 8870},
+        {8870, 8870, 8870, 8870, 8870, 8870},
+        {8870, 8870, 8870, 8870, 8870, 8870}};
 
 // TDA7313
 Tda7313 tda = Tda7313(TDA_ADDRESS);
@@ -146,111 +166,107 @@ void setup()
     pinMode(S_TEMPERATURE, INPUT_PULLDOWN);
     pinMode(S_LIGHT, INPUT_PULLDOWN);
 
+    Wire.begin(SDA_PIN, SCL_PIN);
+
     // Init FSM, display and buttons
-#pragma region  FSM
+#pragma region FSM
     fsm.onSystemStateChanged(onSystemStateChanged);
     fsm.onSystemModeChanged(onSystemModeChanged);
     fsm.onAudioSourceChanged(onAudioSourceChanged);
 #pragma endregion
 
 #pragma region Display
-display = new DisplayManager(LCD_ADDRESS, BTN_BACKLIGHT);
+    display = new DisplayManager(LCD_ADDRESS, BTN_BACKLIGHT);
 #pragma endregion
 
 #pragma region Buttons
-    powerBtn = new SingleButton(PWR_BTN, 50, 1000, false);
-    powerBtn->onPress(onPowerBtn);
+    powerBtn = new SingleButton(BUTTON_SINGLE, PWR_BTN, 50, 300);
+    powerBtn->onPress(togglePower);
 
-    clockSetBtn = new SingleButton(CLK_BTN_SET, 50, 1000, false);
+    clockSetBtn = new SingleButton(BUTTON_SINGLE, CLK_BTN_SET, 50, 300);
     clockSetBtn->onPress(onClockSetBtn);
 
-    clockOkBtn = new SingleButton(CLK_BTN_OK, 50, 1000, false);
+    clockOkBtn = new SingleButton(BUTTON_SINGLE, CLK_BTN_OK, 50, 300);
     clockOkBtn->onPress(onClockOkBtn);
-    
-    volumeUpBtn = new MultiplexedButton(BTN_B0, BTN_B1, BTN_B2, BTN_B3, BTN_B4, VOLUME_INCREASE, 50, 1000, true);
-    volumeUpBtn->onPress(onVolumeIncreaseBtn);
 
-    volumeDownBtn = new MultiplexedButton(BTN_B0, BTN_B1, BTN_B2, BTN_B3, BTN_B4, VOLUME_DECREASE, 50, 1000, true);
-    volumeDownBtn->onPress(onVolumeDecreaseBtn);
+    volumeUpBtn = new MultiplexedButton(BUTTON_REPEAT, BTN_B0, BTN_B1, BTN_B2, BTN_B3, BTN_B4, VOLUME_INCREASE, 50, 300);
+    volumeUpBtn->onPress(increaseVolume);
 
-    basBalBtn = new MultiplexedButton(BTN_B0, BTN_B1, BTN_B2, BTN_B3, BTN_B4, BAS_BAL, 50, 1000, false);
-    basBalBtn->onPress(onBasBalBtn);
+    volumeDownBtn = new MultiplexedButton(BUTTON_REPEAT, BTN_B0, BTN_B1, BTN_B2, BTN_B3, BTN_B4, VOLUME_DECREASE, 50, 300);
+    volumeDownBtn->onPress(decreaseVolume);
 
-    treFadBtn = new MultiplexedButton(BTN_B0, BTN_B1, BTN_B2, BTN_B3, BTN_B4, TRE_FAD, 50, 1000, false);
-    treFadBtn->onPress(onTreFadBtn);
+    basBalBtn = new MultiplexedButton(BUTTON_SINGLE, BTN_B0, BTN_B1, BTN_B2, BTN_B3, BTN_B4, BAS_BAL, 50, 300);
+    basBalBtn->onPress(openBassAndBalanceSettings);
 
-    bstLdnBtn = new MultiplexedButton(BTN_B0, BTN_B1, BTN_B2, BTN_B3, BTN_B4, BST_LDN, 50, 1000, false);
-    bstLdnBtn->onPress(onBstLdnBtn);
+    treFadBtn = new MultiplexedButton(BUTTON_SINGLE, BTN_B0, BTN_B1, BTN_B2, BTN_B3, BTN_B4, TRE_FAD, 50, 300);
+    treFadBtn->onPress(openTrebleAndFadeSettings);
 
-    taBtn = new MultiplexedButton(BTN_B0, BTN_B1, BTN_B2, BTN_B3, BTN_B4, TA, 50, 1000, false);
-    taBtn->onPress(onTaBtn);
+    bstLdnBtn = new MultiplexedButton(BUTTON_SINGLE, BTN_B0, BTN_B1, BTN_B2, BTN_B3, BTN_B4, BST_LDN, 50, 300);
+    bstLdnBtn->onPress(toggleLoudness);
 
-    downBtn = new MultiplexedButton(BTN_B0, BTN_B1, BTN_B2, BTN_B3, BTN_B4, DOWN, 50, 1000, false);
+    taBtn = new MultiplexedButton(BUTTON_SINGLE, BTN_B0, BTN_B1, BTN_B2, BTN_B3, BTN_B4, TA, 50, 300);
+    taBtn->onPress(toggleTraficAnnouncements);
+
+    downBtn = new MultiplexedButton(BUTTON_SINGLE, BTN_B0, BTN_B1, BTN_B2, BTN_B3, BTN_B4, DOWN, 50, 300);
     downBtn->onPress(onDownBtn);
 
-    upBtn = new MultiplexedButton(BTN_B0, BTN_B1, BTN_B2, BTN_B3, BTN_B4, UP, 50, 1000, false);
+    upBtn = new MultiplexedButton(BUTTON_SINGLE, BTN_B0, BTN_B1, BTN_B2, BTN_B3, BTN_B4, UP, 50, 300);
     upBtn->onPress(onUpBtn);
 
-    bandManBtn = new MultiplexedButton(BTN_B0, BTN_B1, BTN_B2, BTN_B3, BTN_B4, BND_MAN, 50, 1000, false);
-    bandManBtn->onPress(onBandManBtn);
+    bandManBtn = new MultiplexedButton(BUTTON_SINGLE, BTN_B0, BTN_B1, BTN_B2, BTN_B3, BTN_B4, BND_MAN, 50, 300);
+    bandManBtn->onPress(selectNextInput);
 
-    astBtn = new MultiplexedButton(BTN_B0, BTN_B1, BTN_B2, BTN_B3, BTN_B4, AST, 50, 1000, false);
-    astBtn->onPress(onAstBtn);
+    astBtn = new MultiplexedButton(BUTTON_SINGLE, BTN_B0, BTN_B1, BTN_B2, BTN_B3, BTN_B4, AST, 50, 300);
+    astBtn->onPress(findBestStations);
 
-    n1Btn = new MultiplexedButton(BTN_B0, BTN_B1, BTN_B2, BTN_B3, BTN_B4, N1, 50, 1000, false);
-    n1Btn->onPress(onN1Btn);
+    n1Btn = new MultiplexedButton(BUTTON_LONG, BTN_B0, BTN_B1, BTN_B2, BTN_B3, BTN_B4, N1, 50, 1000);
+    n1Btn->onPress(selectStationN1);
+    n1Btn->onLongPress(saveStationToN1);
 
-    n2Btn = new MultiplexedButton(BTN_B0, BTN_B1, BTN_B2, BTN_B3, BTN_B4, N2, 50, 1000, false);
-    n2Btn->onPress(onN2Btn);
+    n2Btn = new MultiplexedButton(BUTTON_LONG, BTN_B0, BTN_B1, BTN_B2, BTN_B3, BTN_B4, N2, 50, 1000);
+    n2Btn->onPress(selectStationN2);
+    n2Btn->onLongPress(saveStationToN2);
 
-    n3Btn = new MultiplexedButton(BTN_B0, BTN_B1, BTN_B2, BTN_B3, BTN_B4, N3, 50, 1000, false);
-    n3Btn->onPress(onN3Btn);
+    n3Btn = new MultiplexedButton(BUTTON_LONG, BTN_B0, BTN_B1, BTN_B2, BTN_B3, BTN_B4, N3, 50, 1000);
+    n3Btn->onPress(selectStationN3);
+    n3Btn->onLongPress(saveStationToN3);
 
-    n4Btn = new MultiplexedButton(BTN_B0, BTN_B1, BTN_B2, BTN_B3, BTN_B4, N4, 50, 1000, false);
-    n4Btn->onPress(onN4Btn);
+    n4Btn = new MultiplexedButton(BUTTON_LONG, BTN_B0, BTN_B1, BTN_B2, BTN_B3, BTN_B4, N4, 50, 1000);
+    n4Btn->onPress(selectStationN4);
+    n4Btn->onLongPress(saveStationToN4);
 
-    n5Btn = new MultiplexedButton(BTN_B0, BTN_B1, BTN_B2, BTN_B3, BTN_B4, N5, 50, 1000, false);
-    n5Btn->onPress(onN5Btn);
+    n5Btn = new MultiplexedButton(BUTTON_LONG, BTN_B0, BTN_B1, BTN_B2, BTN_B3, BTN_B4, N5, 50, 1000);
+    n5Btn->onPress(selectStationN5);
+    n5Btn->onLongPress(saveStationToN5);
 
-    n6Btn = new MultiplexedButton(BTN_B0, BTN_B1, BTN_B2, BTN_B3, BTN_B4, N6, 50, 1000, false);
-    n6Btn->onPress(onN6Btn);
+    n6Btn = new MultiplexedButton(BUTTON_LONG, BTN_B0, BTN_B1, BTN_B2, BTN_B3, BTN_B4, N6, 50, 1000);
+    n6Btn->onPress(selectStationN6);
+    n6Btn->onLongPress(saveStationToN6);
 
 #pragma endregion
 
 #pragma region SI4703
-    // radio.setup(RADIO_RESETPIN, RADIO_RST);
-    // radio.init();
-    // radio.setBandFrequency(RADIO_BAND_FM, 8870);
-    // radio.setVolume(14);
-    // radio.setBassBoost(false);
-    // radio.setSoftMute(true);
-    // radio.setMono(false);
-    // radio.setMute(false);
-    // rds.init();
-    // //radio.debugEnable();
-    // radio.attachReceiveRDS(processRDS);
-    // rds.attachServiceNameCallback(updateRDS);
+    InitRadio();
 #pragma endregion
 
 #pragma region TDA7313
-    tda.input(AUDIO_IN_RADIO);	    // 1,2,3    Stereo 1, Stereo 2, Stereo 3
-    tda.loud(false);	            // Loud off (true,false)
-    tda.mute(false);                // Mute off (true,false)
-    tda.volume(10);	                //  0.......15  -78.75dB...........0dB
-    tda.bass(7);	                // 0....7...14  -14dB.....0dB....+14dB
-    tda.treble(7);	                // 0....7...14  -14dB.....0dB....+14dB
+    tda.input(AUDIO_IN_RADIO); // 1,2,3    Stereo 1, Stereo 2, Stereo 3
+    tda.loud(false);           // Loud off (true,false)
+    tda.mute(false);           // Mute off (true,false)
+    tda.volume(7);            //  0.......15  -78.75dB...........0dB
+    tda.bass(7);               // 0....7...14  -14dB.....0dB....+14dB
+    tda.treble(7);             // 0....7...14  -14dB.....0dB....+14dB
 
-    tda.sla(0);                     // 0,1,2,3  0dB, +3.75dB, +7.5dB, +11.25dB
+    tda.sla(2); // 0,1,2,3  0dB, +3.75dB, +7.5dB, +11.25dB
 
-    tda.attLF(0);	                //  0.......13  0dB.........-36.25dB
-    tda.attRF(0);	                //  0.......13  0dB.........-36.25dB
-    tda.attLR(0);	                //  0.......13  0dB.........-36.25dB
-    tda.attRR(0);	                //  0.......13  0dB.........-36.25dB
+    tda.attLF(0); //  0.......13  0dB.........-36.25dB
+    tda.attRF(0); //  0.......13  0dB.........-36.25dB
+    tda.attLR(0); //  0.......13  0dB.........-36.25dB
+    tda.attRR(0); //  0.......13  0dB.........-36.25dB
 #pragma endregion
 
     Serial.begin(115200);
-    Wire.setClock(100000);
-
+    Wire.setClock(300000);
 }
 
 void loop()
@@ -277,6 +293,8 @@ void loop()
     n6Btn->loop();
 
     fsm.loop();
+
+    radio.checkRDS();
 
 #pragma region Ignition state
     // Ignition state change check
@@ -308,29 +326,35 @@ void onSystemStateChanged(SystemState newState, SystemState prevState)
 
     switch (newState)
     {
-        case SystemState::Off:
-            digitalWrite(PWR_ENABLE, LOW);
-            analogWrite(BTN_BACKLIGHT, 0);
-            analogWrite(SCREEN_BACKLIGHT, 0);
-            fsm.changeSystemMode(SystemMode::Idle);
-            display->powerOff();
-            break;
-        case SystemState::Standby:
-            digitalWrite(PWR_ENABLE, LOW);
-            analogWrite(BTN_BACKLIGHT, 0);
-            analogWrite(SCREEN_BACKLIGHT, 120);
-            fsm.changeSystemMode(SystemMode::Idle);
-            display->powerOn();
-            break;
-        case SystemState::On:
-            digitalWrite(PWR_ENABLE, HIGH);
-            analogWrite(BTN_BACKLIGHT, 120);
-            analogWrite(SCREEN_BACKLIGHT, 120);
-            display->powerOn();
-            fsm.changeSystemMode(SystemMode::TurnOnSequence);
-            delay(500);
-            tda.sync();
-            break;
+    case SystemState::Off:
+        StopRadio();
+        delay(100);
+        digitalWrite(PWR_ENABLE, LOW);
+        analogWrite(BTN_BACKLIGHT, 0);
+        analogWrite(SCREEN_BACKLIGHT, 0);
+        fsm.changeSystemMode(SystemMode::Idle);
+        display->powerOff();
+        break;
+    case SystemState::Standby:
+        StopRadio();
+        delay(100);
+        digitalWrite(PWR_ENABLE, LOW);
+        analogWrite(BTN_BACKLIGHT, 0);
+        analogWrite(SCREEN_BACKLIGHT, 120);
+        fsm.changeSystemMode(SystemMode::Idle);
+        display->powerOn();
+        break;
+    case SystemState::On:
+        digitalWrite(PWR_ENABLE, HIGH);
+        analogWrite(BTN_BACKLIGHT, 120);
+        analogWrite(SCREEN_BACKLIGHT, 120);
+        display->powerOn();
+        fsm.changeSystemMode(SystemMode::TurnOnSequence);
+        delay(500);
+        InitRadio();
+        delay(100);
+        tda.sync();
+        break;
     }
 }
 
@@ -340,41 +364,48 @@ void onSystemModeChanged(SystemMode newMode, SystemMode prevMode)
 
     switch (newMode)
     {
-        case SystemMode::TurnOnSequence:
-            display->displayTurnOn();
+    case SystemMode::TurnOnSequence:
+        display->displayTurnOn();
+        break;
+    case SystemMode::Idle:
+        display->displayIdle(fsm.getAudioSource());
+        display->updateTime(0);
+        display->updateTemperature(0);
+        switch (fsm.getAudioSource())
+        {
+        case AudioSource::Radio:
+            display->updateFM(radio.getFrequency(), fsm.isStationSaved? fsm.fmBand : FMBand::FM, nullptr, nullptr);
             break;
-        case SystemMode::Idle:
-            display->displayIdle(fsm.getAudioSource());
-            display->updateTime(0);
-            display->updateTemperature(0);
-            break;
-        case SystemMode::Volume:
-            display->displayVolume();
-            break;
+        }
+        break;
+    case SystemMode::Volume:
+        display->displayVolume();
+        break;
+    case SystemMode::InputSelection:
+        display->displayInputSelection();
+        break;
+    case SystemMode::StationSave:
+        display->displayStationSave();
+        break;
     }
 }
 
 void onAudioSourceChanged(AudioSource newSource, AudioSource prevSource)
 {
     fsm.print();
-
-    display->displayIdle(newSource);
-
     switch (newSource)
     {
-        case AudioSource::FM1:
-        case AudioSource::FM2:
-        case AudioSource::FMBst:
-            tda.input(AUDIO_IN_RADIO);
-            break;
-        case AudioSource::Aux:
-            tda.input(AUDIO_IN_AUX);
-            break;
-        case AudioSource::Bluetooth:
-        case AudioSource::USB:
-        case AudioSource::SD:
-            tda.input(AUDIO_IN_BT_USB_SD);
-            break;
+    case AudioSource::Radio:
+        tda.input(AUDIO_IN_RADIO);
+        break;
+    case AudioSource::Aux:
+        tda.input(AUDIO_IN_AUX);
+        break;
+    case AudioSource::Bluetooth:
+    case AudioSource::USB:
+    case AudioSource::SD:
+        tda.input(AUDIO_IN_BT_USB_SD);
+        break;
     }
 }
 #pragma endregion
@@ -386,7 +417,7 @@ void onIgnitionOn()
     Serial.println("Ignition on");
 
     // If already on or in standby, do nothing
-    if(fsm.getSystemState() == SystemState::Off)
+    if (fsm.getSystemState() == SystemState::Off)
         fsm.changeSystemState(stateAtIgnitionOff);
 }
 
@@ -396,25 +427,25 @@ void onIgnitionOff()
     stateAtIgnitionOff = fsm.getSystemState();
 }
 
-void onPowerBtn()
+void togglePower()
 {
     Serial.println("Power button");
 
     switch (fsm.getSystemState())
     {
-        case SystemState::Off:
-        case SystemState::Standby:
-            fsm.changeSystemState(SystemState::On);
-            break;
-        case SystemState::On:
-            if(digitalRead(S_IGNITION))
-            {
-                fsm.changeSystemState(SystemState::Standby);
-            }
-            else
-            {
-                fsm.changeSystemState(SystemState::Off);
-            }
+    case SystemState::Off:
+    case SystemState::Standby:
+        fsm.changeSystemState(SystemState::On);
+        break;
+    case SystemState::On:
+        if (digitalRead(S_IGNITION))
+        {
+            fsm.changeSystemState(SystemState::Standby);
+        }
+        else
+        {
+            fsm.changeSystemState(SystemState::Off);
+        }
     }
 }
 
@@ -428,148 +459,349 @@ void onClockOkBtn()
     Serial.println("Clock ok button");
 }
 
-void onVolumeIncreaseBtn()
+void increaseVolume()
 {
-    // Change mode 
-    if(fsm.getSystemState() == SystemState::On)
+    // Change mode
+    if (fsm.getSystemState() == SystemState::On)
     {
         Serial.println("Volume increase");
         fsm.changeSystemMode(SystemMode::Volume);
-        
+
         // Increase volume update display
         tda.volume(tda.volume() + 1);
         display->updateVolume(tda.volume());
     }
 }
 
-void onVolumeDecreaseBtn()
+void decreaseVolume()
 {
-    // Change mode 
-    if(fsm.getSystemState() == SystemState::On)
+    // Change mode
+    if (fsm.getSystemState() == SystemState::On)
     {
         Serial.println("Volume decrease");
         fsm.changeSystemMode(SystemMode::Volume);
-        
+
         // Decrease volume update display
         tda.volume(tda.volume() - 1);
         display->updateVolume(tda.volume());
     }
 }
 
-void onBasBalBtn()
+void openBassAndBalanceSettings()
 {
     Serial.println("Bass/Balance");
 }
 
-void onTreFadBtn()
+void openTrebleAndFadeSettings()
 {
     Serial.println("Treble/Fader");
 }
 
-void onBstLdnBtn()
+void toggleBassBoost()
+{
+
+}
+
+void toggleLoudness()
 {
     Serial.println("Boost/Loudness");
 }
 
-void onTaBtn()
+void toggleTraficAnnouncements()
 {
     Serial.println("TA");
 }
 
 void onDownBtn()
 {
-
-    if(fsm.getSystemState() == SystemState::On)
+    if (fsm.getSystemState() == SystemState::On)
     {
         Serial.println("Down");
-        // radio.seekDown();
+        switch (fsm.getAudioSource())
+        {
+        case AudioSource::Radio:
+            switch (fsm.seekMode)
+            {
+            case SeekMode::Auto:
+                radio.seekDown();
+                break;
+            case SeekMode::Manual:
+                radio.setFrequency(radio.getFrequency() + radio.getFrequencyStep());
+                break;
+            }
+            fsm.isStationSaved = false;
+            fsm.changeSystemMode(SystemMode::Idle);
+            RDSClear();
+            display->updateFM(radio.getFrequency(), FMBand::FM, nullptr, nullptr);
+            break;
+        }
     }
 }
 
 void onUpBtn()
 {
-
-    if(fsm.getSystemState() == SystemState::On)
+    if (fsm.getSystemState() == SystemState::On)
     {
         Serial.println("Up");
-        // radio.seekUp();
-    }
-}
-
-void onBandManBtn()
-{
-    Serial.println("Band/Manual");
-    if(fsm.getSystemState() == SystemState::On)
-    {
         switch (fsm.getAudioSource())
         {
-            case AudioSource::FM1:
-                fsm.changeAudioSource(AudioSource::FM2);
+        case AudioSource::Radio:
+            // radio.clearRdsBuffer();
+            switch (fsm.seekMode)
+            {
+            case SeekMode::Auto:
+                radio.seekUp();
                 break;
-            case AudioSource::FM2:
-                fsm.changeAudioSource(AudioSource::Aux);
+            case SeekMode::Manual:
+                radio.setFrequency(radio.getFrequency() - radio.getFrequencyStep());
                 break;
-            case AudioSource::Aux:
-                fsm.changeAudioSource(AudioSource::Bluetooth);
-                break;
-            case AudioSource::Bluetooth:
-                fsm.changeAudioSource(AudioSource::USB);
-                break;
-            case AudioSource::USB:
-                fsm.changeAudioSource(AudioSource::SD);
-                break;
-            case AudioSource::SD:
-                fsm.changeAudioSource(AudioSource::FM1);
-                break;
-            case AudioSource::FMBst:
-                fsm.changeAudioSource(AudioSource::FM1);
-                break;
+            }
+            fsm.isStationSaved = false;
+            fsm.changeSystemMode(SystemMode::Idle);
+            RDSClear();
+            display->updateFM(radio.getFrequency(), FMBand::FM, nullptr, nullptr);
+            break;
         }
     }
 }
 
-void onAstBtn()
+void selectNextInput()
+{
+    Serial.println("Band/Manual");
+    if (fsm.getSystemState() == SystemState::On)
+    {
+        fsm.changeSystemMode(SystemMode::InputSelection);
+        switch (fsm.getAudioSource())
+        {
+        case AudioSource::Radio:
+            switch(fsm.fmBand)
+            {
+                case FMBand::FM:
+                    fsm.fmBand = FMBand::FM1;
+                    break;
+                case FMBand::FMBst:
+                    fsm.fmBand = FMBand::FM1;
+                    break;
+                case FMBand::FM1:
+                    fsm.fmBand = FMBand::FM2;
+                    break;
+                case FMBand::FM2:
+                    fsm.changeAudioSource(AudioSource::Aux);
+                    break;
+            }
+            break;
+        case AudioSource::Aux:
+            fsm.changeAudioSource(AudioSource::Bluetooth);
+            break;
+        case AudioSource::Bluetooth:
+            fsm.changeAudioSource(AudioSource::USB);
+            break;
+        case AudioSource::USB:
+            fsm.changeAudioSource(AudioSource::SD);
+            break;
+        case AudioSource::SD:
+            fsm.fmBand = FMBand::FM1;
+            fsm.changeAudioSource(AudioSource::Radio);
+            break;
+        }
+        display->updateInputSelection(fsm.getAudioSource(), fsm.fmBand);
+    }
+}
+
+void findBestStations()
 {
     Serial.println("AST");
-}   
-
-void onN1Btn()
-{
-    Serial.println("1");
-}   
-
-void onN2Btn()
-{
-    Serial.println("2");
-}   
-
-void onN3Btn()
-{
-    Serial.println("3");
-}   
-
-void onN4Btn()
-{
-    Serial.println("4");
 }
 
-void onN5Btn()
+void selectStationN1()
 {
-    Serial.println("5");
+    fsm.isStationSaved = true;
+    fsm.changeSystemMode(SystemMode::Idle);
+
+    radio.setFrequency(savedStations[(int)fsm.fmBand][0]);
 }
 
-void onN6Btn()
+void saveStationToN1()
 {
-    Serial.println("6");
+    savedStations[(int)fsm.fmBand][0] = radio.getFrequency();
+    
+    tda.mute(true);
+    delay(SAVE_STATION_PAUSE);
+    tda.mute(false);
+
+    fsm.isStationSaved = true;
+    fsm.changeSystemMode(SystemMode::StationSave);
+    display->updateStationSave(radio.getFrequency(), fsm.fmBand);
+}
+
+void selectStationN2()
+{
+    fsm.isStationSaved = true;
+    fsm.changeSystemMode(SystemMode::Idle);
+
+    radio.setFrequency(savedStations[(int)fsm.fmBand][1]);
+}
+
+void saveStationToN2()
+{
+    savedStations[(int)fsm.fmBand][1] = radio.getFrequency();
+    
+    tda.mute(true);
+    delay(SAVE_STATION_PAUSE);
+    tda.mute(false);
+
+    fsm.isStationSaved = true;
+    fsm.changeSystemMode(SystemMode::StationSave);
+    display->updateStationSave(radio.getFrequency(), fsm.fmBand);
+}
+
+void selectStationN3()
+{
+    fsm.isStationSaved = true;
+    fsm.changeSystemMode(SystemMode::Idle);
+
+    radio.setFrequency(savedStations[(int)fsm.fmBand][2]);
+}
+
+void saveStationToN3()
+{
+    savedStations[(int)fsm.fmBand][2] = radio.getFrequency();
+    
+    tda.mute(true);
+    delay(SAVE_STATION_PAUSE);
+    tda.mute(false);
+
+    fsm.isStationSaved = true;
+    fsm.changeSystemMode(SystemMode::StationSave);
+    display->updateStationSave(radio.getFrequency(), fsm.fmBand);
+}
+
+void selectStationN4()
+{
+    fsm.isStationSaved = true;
+    fsm.changeSystemMode(SystemMode::Idle);
+
+    radio.setFrequency(savedStations[(int)fsm.fmBand][3]);
+}
+
+void saveStationToN4()
+{
+    savedStations[(int)fsm.fmBand][3] = radio.getFrequency();
+    
+    tda.mute(true);
+    delay(SAVE_STATION_PAUSE);
+    tda.mute(false);
+
+    fsm.isStationSaved = true;
+    fsm.changeSystemMode(SystemMode::StationSave);
+    display->updateStationSave(radio.getFrequency(), fsm.fmBand);
+}
+
+void selectStationN5()
+{
+    fsm.isStationSaved = true;
+    fsm.changeSystemMode(SystemMode::Idle);
+
+    radio.setFrequency(savedStations[(int)fsm.fmBand][4]);
+}
+
+void saveStationToN5()
+{
+    savedStations[(int)fsm.fmBand][4] = radio.getFrequency();
+    
+    tda.mute(true);
+    delay(SAVE_STATION_PAUSE);
+    tda.mute(false);
+
+    fsm.isStationSaved = true;
+    fsm.changeSystemMode(SystemMode::StationSave);
+    display->updateStationSave(radio.getFrequency(), fsm.fmBand);
+}
+
+void selectStationN6()
+{
+    fsm.isStationSaved = true;
+    fsm.changeSystemMode(SystemMode::Idle);
+
+    radio.setFrequency(savedStations[(int)fsm.fmBand][5]);
+}
+
+void saveStationToN6()
+{
+    savedStations[(int)fsm.fmBand][5] = radio.getFrequency();
+    
+    tda.mute(true);
+    delay(SAVE_STATION_PAUSE);
+    tda.mute(false);
+
+    fsm.isStationSaved = true;
+    fsm.changeSystemMode(SystemMode::StationSave);
+    display->updateStationSave(radio.getFrequency(), fsm.fmBand);
+}
+#pragma endregion
+
+#pragma regios Radio
+void InitRadio()
+{
+    radio.setup(RADIO_RESETPIN, RADIO_RST);
+    radio.setup(RADIO_MODEPIN, SDA_PIN);
+
+    // radio.setRDS(true);  // Turns RDS on
+    radio.debugEnable(true); // Turns debug information on
+    radio._wireDebug(true);  // Turns I2C debug information on
+
+    radio.setup(RADIO_FMSPACING, RADIO_FMSPACING_100);
+    radio.setup(RADIO_DEEMPHASIS, RADIO_DEEMPHASIS_50);
+
+    radio.initWire(Wire);
+
+    radio.debugEnable(true); // Turns debug information on
+    radio._wireDebug(true);  // Turns I2C debug information on
+
+    radio.setBandFrequency(RADIO_BAND_FM, stationAtShutdown);
+    radio.setVolume(15);
+    radio.setMono(false);
+    radio.setMute(false);
+
+    radio.attachReceiveRDS(RDSProcess);
+    rdsParser.attachServiceNameCallback(RDSServiceNameUpdate);
+    rdsParser.attachTextCallback(RDSRadioTextUpdate);
+}
+
+void StopRadio()
+{
+    stationAtShutdown = radio.getFrequency();
 }
 #pragma endregion
 
 #pragma region RDS Callbacks
-// void updateRDS(const char* stationName){ //updates display When new RDS data is available
-//     // display.
-// }
+void RDSProcess(uint16_t blockA, uint16_t blockB, uint16_t blockC, uint16_t blockD)
+{
+    rdsParser.processData(blockA, blockB, blockC, blockD);
+}
 
-// void processRDS(uint16_t block1, uint16_t block2, uint16_t block3, uint16_t block4){ //Gets the data of RDS and process it
-//   rds.processData(block1, block2, block3, block4);
-// }
+void RDSServiceNameUpdate(const char *serviceName)
+{
+    // display.updateRDSServiceName(serviceName);
+    if (fsm.getSystemState() == SystemState::On && fsm.getSystemMode() == SystemMode::Idle && fsm.getAudioSource() == AudioSource::Radio)
+    {
+        display->updateFM(radio.getFrequency(), fsm.isStationSaved? fsm.fmBand : FMBand::FM, serviceName, nullptr);
+    }
+}
+
+void RDSRadioTextUpdate(const char *radioText)
+{
+    if (fsm.getSystemState() == SystemState::On && fsm.getSystemMode() == SystemMode::Idle && fsm.getAudioSource() == AudioSource::Radio)
+    {
+        display->updateFM(radio.getFrequency(), fsm.isStationSaved? fsm.fmBand : FMBand::FM, nullptr, radioText);
+    }
+}
+
+void RDSClear()
+{
+    if (fsm.getAudioSource() == AudioSource::Radio)
+    {
+        display->updateFM(radio.getFrequency(), fsm.isStationSaved? fsm.fmBand : FMBand::FM, nullptr, nullptr);
+    }
+}
 #pragma endregion

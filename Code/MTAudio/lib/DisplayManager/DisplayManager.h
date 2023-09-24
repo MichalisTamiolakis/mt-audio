@@ -5,6 +5,9 @@
 #include <FSM.h>
 #include <LiquidCrystal_I2C.h>
 
+// display functions print static info
+// update functions print dynamic info along with the static printed before with display functions
+
 class DisplayManager{
 public:
     DisplayManager(uint8_t lcdAddress, uint8_t backlight);
@@ -28,15 +31,17 @@ public:
     
     // Continuous displays
     void displayIdle(AudioSource source); // Idle for specific source
-    
-    // For source fm
-    void updateFMFrequency();
+    void updateFM(uint16_t frequency, FMBand FMBand, const char* serviceName, const char* radioText);
+    void updateAux();
+    void updateBluetooth();
+    void updateUSB();
 
+    void displayInputSelection();
+    void updateInputSelection(AudioSource source, FMBand fmBand);
 
-    void displayBluetooth();
-    void displayUSB();
-    void displaySD();
-    void displayAux();
+    void displayStationSave();
+    void updateStationSave(uint16_t frequency, FMBand fmBand);
+
 
 private:
     bool isPoweredOn;

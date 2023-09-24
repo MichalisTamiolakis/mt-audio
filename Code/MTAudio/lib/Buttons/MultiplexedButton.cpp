@@ -1,7 +1,7 @@
 #include "MultiplexedButton.h"
 
-MultiplexedButton::MultiplexedButton(uint8_t pin0, uint8_t pin1, uint8_t pin2, uint8_t pin3, uint8_t pin4, uint8_t buttonCode, uint32_t debounceDelay, uint32_t longPressDelay, bool allowRepeat)
-    : ButtonBase(debounceDelay, longPressDelay, allowRepeat)
+MultiplexedButton::MultiplexedButton(uint8_t buttonType, uint8_t pin0, uint8_t pin1, uint8_t pin2, uint8_t pin3, uint8_t pin4, uint8_t buttonCode, uint32_t debounceDelay, uint32_t functionDelay)
+    : ButtonBase(buttonType, debounceDelay, functionDelay)
 {
     this->pins[0] = pin0;
     this->pins[1] = pin1;
@@ -22,7 +22,7 @@ MultiplexedButton::MultiplexedButton(uint8_t pin0, uint8_t pin1, uint8_t pin2, u
 
 void MultiplexedButton::loop()
 {
-    if(getCurrentButtonCode() != 0x0)
+    if(getCurrentButtonCode() == this->buttonCode)
     {
         ButtonBase::press();
     }
@@ -58,10 +58,6 @@ void MultiplexedButton::onLongPress(void (*func)())
 
 void MultiplexedButton::sendPress()
 {
-    uint8_t currentCode = getCurrentButtonCode();
-    if(buttonCode != currentCode)
-        return;
-
     if(onPressCb)
     {
         onPressCb();
@@ -70,10 +66,6 @@ void MultiplexedButton::sendPress()
 
 void MultiplexedButton::sendLongPress()
 {
-    uint8_t currentCode = getCurrentButtonCode();
-    if(buttonCode != currentCode)
-        return;
-    
     if(onLongPressCb)
     {
         onLongPressCb();
