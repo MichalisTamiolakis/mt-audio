@@ -144,6 +144,13 @@ void DisplayManager::displayIdle(AudioSource source)
     // lcd->printf("        %d          ", FMStationNumber);
 }
 
+void DisplayManager::displayStandbyIdle()
+{
+    this->clearLine(1);
+    this->clearLine(2);
+    this->clearLine(3);
+}
+
 void DisplayManager::updateFM(uint16_t frequency, FMBand savedBand, const char* serviceName, const char* radioText)
 {
     clearLine(1);

@@ -31,7 +31,8 @@ public:
     
     // Continuous displays
     void displayIdle(AudioSource source); // Idle for specific source
-    void updateFM(uint16_t frequency, FMBand FMBand, const char* serviceName, const char* radioText);
+    void displayStandbyIdle(); // Idle for standby mode
+    void updateFM(uint16_t frequency, FMBand FMBand, const char *serviceName, const char *radioText);
     void updateAux();
     void updateBluetooth();
     void updateUSB();

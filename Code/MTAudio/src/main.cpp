@@ -14,12 +14,19 @@
 // TDA7313
 #include <Tda7313.h>
 
+// BT201
+#include <BT201.h>
+
 // RTC
 // #include <RTClib.h>
 
 // TDA ADDRESS
 #define TDA_ADDRESS 0x44
 #define LCD_ADDRESS 0x3F
+
+// Serial 2 pins
+#define RXD2 16
+#define TXD2 17
 
 // Output
 #define PWR_ENABLE 15
@@ -64,8 +71,8 @@
 
 // Audio Sources
 #define AUDIO_IN_RADIO 2
-#define AUDIO_IN_BT_USB_SD 1
-#define AUDIO_IN_AUX 3
+#define AUDIO_IN_BT_USB_SD 3
+#define AUDIO_IN_AUX 1
 
 // Generic Settings
 #define SAVE_STATION_PAUSE 300 // 300 ms pause when saving station 
@@ -150,8 +157,10 @@ uint16_t savedStations[3][6] =
 
 // TDA7313
 Tda7313 tda = Tda7313(TDA_ADDRESS);
+BT201 bt201(&Serial2);
 
-SystemState stateAtIgnitionOff = SystemState::Standby;
+SystemState stateBeforeIgnitionOn = SystemState::Off;
+SystemState stateBeforeIgnitionOff = SystemState::On;
 bool previousIgnitionState = false;
 
 void setup()
@@ -167,6 +176,8 @@ void setup()
     pinMode(S_LIGHT, INPUT_PULLDOWN);
 
     Wire.begin(SDA_PIN, SCL_PIN);
+
+    Serial2.begin(115200, SERIAL_8N1, RXD2, TXD2);
 
     // Init FSM, display and buttons
 #pragma region FSM
@@ -336,22 +347,21 @@ void onSystemStateChanged(SystemState newState, SystemState prevState)
         display->powerOff();
         break;
     case SystemState::Standby:
+        display->powerOn();
+        fsm.changeSystemMode(SystemMode::Idle);
         StopRadio();
         delay(100);
         digitalWrite(PWR_ENABLE, LOW);
         analogWrite(BTN_BACKLIGHT, 0);
         analogWrite(SCREEN_BACKLIGHT, 120);
-        fsm.changeSystemMode(SystemMode::Idle);
-        display->powerOn();
         break;
     case SystemState::On:
+        InitRadio();
         digitalWrite(PWR_ENABLE, HIGH);
         analogWrite(BTN_BACKLIGHT, 120);
         analogWrite(SCREEN_BACKLIGHT, 120);
         display->powerOn();
         fsm.changeSystemMode(SystemMode::TurnOnSequence);
-        delay(500);
-        InitRadio();
         delay(100);
         tda.sync();
         break;
@@ -368,14 +378,21 @@ void onSystemModeChanged(SystemMode newMode, SystemMode prevMode)
         display->displayTurnOn();
         break;
     case SystemMode::Idle:
-        display->displayIdle(fsm.getAudioSource());
-        display->updateTime(0);
-        display->updateTemperature(0);
-        switch (fsm.getAudioSource())
+        if(fsm.getSystemState() == SystemState::On)
         {
-        case AudioSource::Radio:
-            display->updateFM(radio.getFrequency(), fsm.isStationSaved? fsm.fmBand : FMBand::FM, nullptr, nullptr);
-            break;
+            display->displayIdle(fsm.getAudioSource());
+            display->updateTime(0);
+            display->updateTemperature(0);
+            switch (fsm.getAudioSource())
+            {
+            case AudioSource::Radio:
+                display->updateFM(radio.getFrequency(), fsm.isStationSaved? fsm.fmBand : FMBand::FM, nullptr, nullptr);
+                break;
+            }
+        }
+        else if(fsm.getSystemState() == SystemState::Standby)
+        {
+            display->displayStandbyIdle();
         }
         break;
     case SystemMode::Volume:
@@ -402,9 +419,28 @@ void onAudioSourceChanged(AudioSource newSource, AudioSource prevSource)
         tda.input(AUDIO_IN_AUX);
         break;
     case AudioSource::Bluetooth:
+        tda.input(AUDIO_IN_BT_USB_SD);
     case AudioSource::USB:
+        tda.input(AUDIO_IN_BT_USB_SD);
+        // Check if there is usb to actually switch to it. Otherwise switch to SD.
+        bt201.setAudioMode(AudioMode::UDisk);
+        delay(100);
+        AudioMode mode = bt201.getAudioMode();
+        if(mode != AudioMode::UDisk) // Did not switch successfully
+        {
+            fsm.changeAudioSource(AudioSource::SD);
+        }
     case AudioSource::SD:
         tda.input(AUDIO_IN_BT_USB_SD);
+
+        // Check if there is sd card to actually switch to it. Otherwise switch back to Radio.
+        bt201.setAudioMode(AudioMode::TFCard);
+        delay(100);
+        AudioMode mode = bt201.getAudioMode();
+        if(mode != AudioMode::TFCard) // Did not switch successfully
+        {
+            fsm.changeAudioSource(AudioSource::Radio);
+        }
         break;
     }
 }
@@ -416,15 +452,28 @@ void onIgnitionOn()
 {
     Serial.println("Ignition on");
 
+    stateBeforeIgnitionOn = fsm.getSystemState();
+
     // If already on or in standby, do nothing
     if (fsm.getSystemState() == SystemState::Off)
-        fsm.changeSystemState(stateAtIgnitionOff);
+        fsm.changeSystemState(stateBeforeIgnitionOff);
 }
 
 void onIgnitionOff()
-{
+{    
     Serial.println("Ignition off");
-    stateAtIgnitionOff = fsm.getSystemState();
+
+    stateBeforeIgnitionOff = fsm.getSystemState();
+
+    // If at the time we turned on the ignition the radio was already and now is on, then keep it on.
+    if(stateBeforeIgnitionOn == SystemState::On && fsm.getSystemState() == SystemState::On)
+    {
+    }
+
+    // Else Turn off the radio completely
+    else{
+        fsm.changeSystemState(SystemState::Off);
+    }
 }
 
 void togglePower()
@@ -433,10 +482,13 @@ void togglePower()
 
     switch (fsm.getSystemState())
     {
+    // Toggle to on
     case SystemState::Off:
     case SystemState::Standby:
         fsm.changeSystemState(SystemState::On);
         break;
+
+    // Toggle to off
     case SystemState::On:
         if (digitalRead(S_IGNITION))
         {
@@ -445,6 +497,7 @@ void togglePower()
         else
         {
             fsm.changeSystemState(SystemState::Off);
+            fsm.changeSystemMode(SystemMode::Idle);
         }
     }
 }
@@ -567,7 +620,7 @@ void onUpBtn()
 
 void selectNextInput()
 {
-    Serial.println("Band/Manual");
+    Serial.println("Band");
     if (fsm.getSystemState() == SystemState::On)
     {
         fsm.changeSystemMode(SystemMode::InputSelection);
@@ -746,17 +799,16 @@ void InitRadio()
     radio.setup(RADIO_RESETPIN, RADIO_RST);
     radio.setup(RADIO_MODEPIN, SDA_PIN);
 
-    // radio.setRDS(true);  // Turns RDS on
-    radio.debugEnable(true); // Turns debug information on
-    radio._wireDebug(true);  // Turns I2C debug information on
+    // radio.debugEnable(true); // Turns debug information on
+    // radio._wireDebug(true);  // Turns I2C debug information on
 
     radio.setup(RADIO_FMSPACING, RADIO_FMSPACING_100);
     radio.setup(RADIO_DEEMPHASIS, RADIO_DEEMPHASIS_50);
 
     radio.initWire(Wire);
 
-    radio.debugEnable(true); // Turns debug information on
-    radio._wireDebug(true);  // Turns I2C debug information on
+    // radio.debugEnable(true); // Turns debug information on
+    // radio._wireDebug(true);  // Turns I2C debug information on
 
     radio.setBandFrequency(RADIO_BAND_FM, stationAtShutdown);
     radio.setVolume(15);
