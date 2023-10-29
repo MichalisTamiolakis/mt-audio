@@ -1,8 +1,7 @@
 #ifndef DisplayManager_h
 #define DisplayManager_h
 
-#include <System.h>
-#include <FSM.h>
+// #include <System.h>
 #include <LiquidCrystal_I2C.h>
 
 // display functions print static info
@@ -10,48 +9,63 @@
 
 class DisplayManager{
 public:
-    DisplayManager(uint8_t lcdAddress, uint8_t backlight);
+    DisplayManager(uint8_t lcdAddress, uint8_t backlight)
+    {
+        this->backlightPin = backlight;
+        this->lcdAddress = lcdAddress;
 
-    void powerOn();
-    void powerOff();
-    void updateTime(int newTime);
-    void updateTemperature(float newTemeperature);
-    
-    // Overlayed displays
-    void displayTurnOn();
+        pinMode(backlight, OUTPUT);
+        
+        this->lcd = new LiquidCrystal_I2C(lcdAddress, 20, 4);
+        lcd->init();
 
-    void displayVolume();
-    void updateVolume(uint8_t volumeLevel);
+        powerOff();
+    }
 
-    void displayBass();
-    void updateBass(uint8_t bassLevel);
-    
-    void displayTreble();
-    void updateTreble(uint8_t trebleLevel);
-    
-    // Continuous displays
-    void displayIdle(AudioSource source); // Idle for specific source
-    void displayStandbyIdle(); // Idle for standby mode
-    void updateFM(uint16_t frequency, FMBand FMBand, const char *serviceName, const char *radioText);
-    void updateAux();
-    void updateBluetooth();
-    void updateUSB();
+    void powerOn()
+    {
+        analogWrite(backlightPin, 255);
+        lcd->display();
+        lcd->backlight();
+        isPoweredOn = true;
+    }
 
-    void displayInputSelection();
-    void updateInputSelection(AudioSource source, FMBand fmBand);
+    void powerOff()
+    {
+        this->isPoweredOn = false;
 
-    void displayStationSave();
-    void updateStationSave(uint16_t frequency, FMBand fmBand);
+        analogWrite(backlightPin, 0);
 
+        lcd->clear();
+        lcd->noDisplay();
+        lcd->noBacklight();
+    }
+
+    void updateTimeDisplay()
+    {
+        
+    }
+
+    void updateTemperatureDisplay()
+    {
+
+    }
+
+    void updateMainDisplay()
+    {
+
+    }
 
 private:
     bool isPoweredOn;
     uint8_t backlightPin;
     uint8_t lcdAddress;    
     LiquidCrystal_I2C* lcd;
-    char* displayChars; 
-    void clearLine(int lineNo);
-
+    void clearLine(int lineNo)
+    {
+        lcd->setCursor(0, lineNo);
+        lcd->print("                   ");
+    }
 };
 
 #endif
