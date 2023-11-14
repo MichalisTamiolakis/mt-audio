@@ -1,4 +1,11 @@
 #include <Arduino.h>
+#include <WiFi.h>
+#include <AsyncTCP.h>
+#include <ESPAsyncWebServer.h>
+#include <WebSerial.h>
+
+#define DEBUG_LOG(format, ...) WebSerial.printf(format, ##__VA_ARGS__)
+
 #include <System.h>
 
 // Button I/O pins
@@ -32,8 +39,11 @@
 // Ignition Sensing pin
 #define S_IGNITION 32
 
+AsyncWebServer server(80);
+const char* ssid = "Michalis";          // Your WiFi SSID
+const char* password = "2810225674";  // Your WiFi Password
 
-System radioSystem;
+System radioSystem = System();
 
 // All the buttons
 SingleButton *powerBtn;
@@ -87,106 +97,117 @@ void onClockOkBtn()
 
 void increaseVolume()
 {
+    radioSystem.increaseVolume();
 }
 
 void decreaseVolume()
 {
+    radioSystem.decreaseVolume();
 }
 
 void openBassAndBalanceSettings()
 {
+    radioSystem.openBassAndBalanceSettings();
 }
 
 void openTrebleAndFadeSettings()
 {
+    radioSystem.openTrebleAndFadeSettings();
 }
 
 void toggleBassBoost()
 {
+    radioSystem.toggleBassBoost();
 }
 
 void toggleLoudness()
 {
+    radioSystem.toggleLoudness();
 }
 
 void toggleTraficAnnouncements()
 {
+    radioSystem.toggleTraficAnnouncements();
 }
 
 void onDownBtn()
 {
+    radioSystem.onDownBtn();
 }
 
 void onUpBtn()
 {
+    radioSystem.onUpBtn();
 }
 
 void selectNextInput()
 {
+    radioSystem.selectNextInput();
 }
 
 void findBestStations()
 {
+    radioSystem.findBestStations();
 }
 
 void selectStationN1()
 {
-
+    radioSystem.selectStationN1();
 }
 
 void saveStationToN1()
 {
-
+    radioSystem.saveStationToN1();
 }
 
 void selectStationN2()
 {
-
+    radioSystem.selectStationN2();
 }
 
 void saveStationToN2()
 {
-
+    radioSystem.saveStationToN2();
 }
 
 void selectStationN3()
 {
-
+    radioSystem.selectStationN3();
 }
 
 void saveStationToN3()
 {
-
+    radioSystem.saveStationToN3();
 }
 
 void selectStationN4()
 {
-
+    radioSystem.selectStationN4();
 }
 
 void saveStationToN4()
 {
-
+    radioSystem.saveStationToN4();
 }
 
 void selectStationN5()
 {
-
+    radioSystem.selectStationN5();
 }
 
 void saveStationToN5()
 {
-
+    radioSystem.saveStationToN5();
 }
 
 void selectStationN6()
 {
-
+    radioSystem.selectStationN6();
 }
 
 void saveStationToN6()
 {
-
+    radioSystem.saveStationToN6();
 }
 #pragma endregion
 
@@ -282,8 +303,24 @@ void updateButtons()
 
 void setup()
 {
+    delay(3000);
+
+    WiFi.mode(WIFI_STA);
+    WiFi.begin(ssid, password);
+    if (WiFi.waitForConnectResult() != WL_CONNECTED) {
+        return;
+    }
+    // WebSerial is accessible at "<IP Address>/webserial" in browser
+    WebSerial.begin(&server);
+    server.begin();
+
+    delay(10000);
+    WebSerial.println("Hello line");
+    DEBUG_LOG("Hello World!\n");
+
     pinMode(S_IGNITION, INPUT_PULLDOWN);
     radioSystem.init();
+    initButtons();
 }
 
 void loop()
@@ -291,7 +328,7 @@ void loop()
     // Ignition state change check
     if (digitalRead(S_IGNITION) != previousIgnitionState)
     {
-        delay(100); // Crude debounce
+        delay(1000); // Crude debounce
         bool ignitionState = digitalRead(S_IGNITION);
         if (ignitionState != previousIgnitionState)
         {
@@ -309,4 +346,5 @@ void loop()
     }
 
     radioSystem.update();
+    updateButtons();
 }

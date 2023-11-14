@@ -44,7 +44,7 @@ enum class AudioSource
     SD // SD
 };
 
-enum class SeekMode
+enum class RadioSeekMode
 {
     Auto, // Up and down buttons go to the next good received station
     Manual // Up and down buttons go to the next station
