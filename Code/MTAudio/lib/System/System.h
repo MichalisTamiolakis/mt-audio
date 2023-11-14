@@ -32,6 +32,8 @@
 // #define DEBUG_LOG(format, ...)
 // #endif
 
+#define RADIO_ENABLED
+
 // TDA ADDRESS
 #define TDA_ADDRESS 0x44
 #define LCD_ADDRESS 0x3F
@@ -61,7 +63,7 @@
 #define SAVE_STATION_PAUSE 300 // 300 ms pause when saving station
 
 // Overlay Menu display times
-#define TURN_ON_SEQUENCE_DISPLAY_TIME 3000  
+#define TURN_ON_SEQUENCE_DISPLAY_TIME 3000
 #define VOLUME_DISPLAY_TIME 2000
 #define SAVE_STATION_DISPLAY_TIME 2000
 #define INPUT_SELECTION_DISPLAY_TIME 2000
@@ -72,11 +74,13 @@ private:
     // Display
     DisplayManager *display;
 
-    // Radio
-    // SI4703 *radio;
-    // static RDSParser *rdsParser;
-    // static String rdsServiceName;
-    // static String rdsRadioText;
+// Radio
+#ifdef RADIO_ENABLED
+    SI4703 *radio;
+// static RDSParser *rdsParser;
+// static String rdsServiceName;
+// static String rdsRadioText;
+#endif
     uint16_t stationAtShutdown;
 
     // TDA7313
@@ -96,43 +100,46 @@ private:
     uint16_t savedStations[3][6] = {
         {8870, 8870, 8870, 8870, 8870, 8870},
         {8870, 8870, 8870, 8870, 8870, 8870},
-        {8870, 8870, 8870, 8870, 8870, 8870}
-    };
+        {8870, 8870, 8870, 8870, 8870, 8870}};
 
     bool isCurrentStationSaved = false;
     FMBand currentSavedStationBand = FMBand::FM1;
 
     void initRadio()
     {
-        // radio->setup(RADIO_RESETPIN, RADIO_RST);
-        // radio->setup(RADIO_MODEPIN, SDA_PIN);
+#ifdef RADIO_ENABLED
+        radio->setup(RADIO_RESETPIN, RADIO_RST);
+        radio->setup(RADIO_MODEPIN, SDA_PIN);
 
-        // radio->debugEnable(true); // Turns debug information on
-        // radio->_wireDebug(true);  // Turns I2C debug information on
+        radio->debugEnable(true); // Turns debug information on
+        radio->_wireDebug(true);  // Turns I2C debug information on
 
-        // radio->setup(RADIO_FMSPACING, RADIO_FMSPACING_100);
-        // radio->setup(RADIO_DEEMPHASIS, RADIO_DEEMPHASIS_50);
+        radio->setup(RADIO_FMSPACING, RADIO_FMSPACING_100);
+        radio->setup(RADIO_DEEMPHASIS, RADIO_DEEMPHASIS_50);
 
-        // radio->initWire(Wire);
+        radio->initWire(Wire);
 
-        // radio->debugEnable(true); // Turns debug information on
-        // // radio._wireDebug(true);  // Turns I2C debug information on
+        radio->debugEnable(true); // Turns debug information on
+        // radio._wireDebug(true);  // Turns I2C debug information on
 
-        // radio->setBandFrequency(RADIO_BAND_FM, stationAtShutdown);
-        // radio->setVolume(15);
-        // radio->setMono(false);
-        // radio->setMute(false);
-        // radio->setSoftMute(true);
+        radio->setBandFrequency(RADIO_BAND_FM, stationAtShutdown);
+        radio->setVolume(15);
+        radio->setMono(false);
+        radio->setMute(false);
+        radio->setSoftMute(true);
 
-        // radio->attachReceiveRDS(RDSProcess);
-        // rdsParser->attachServiceNameCallback(RDSServiceNameUpdate);
-        // rdsParser->attachTextCallback(RDSRadioTextUpdate);
+// radio->attachReceiveRDS(RDSProcess);
+// rdsParser->attachServiceNameCallback(RDSServiceNameUpdate);
+// rdsParser->attachTextCallback(RDSRadioTextUpdate);
+#endif
     }
 
     void shutdownRadio()
     {
-        // stationAtShutdown = radio->getFrequency();
-        // radio->setMute(true);
+#ifdef RADIO_ENABLED
+        stationAtShutdown = radio->getFrequency();
+        radio->setMute(true);
+#endif
     }
 
     void initTDA()
@@ -156,65 +163,65 @@ private:
     {
         SystemState prevState = systemState;
         systemState = newState;
-        
+
         // State change functionality
-        switch(newState)
+        switch (newState)
         {
-            case SystemState::On:
-                digitalWrite(PWR_ENABLE, HIGH);
-                analogWrite(BTN_BACKLIGHT, 120);
-                analogWrite(SCREEN_BACKLIGHT, 120);
-                delay(100);
-                display->powerOn();
+        case SystemState::On:
+            digitalWrite(PWR_ENABLE, HIGH);
+            analogWrite(BTN_BACKLIGHT, 120);
+            analogWrite(SCREEN_BACKLIGHT, 120);
+            delay(100);
+            display->powerOn();
 
-                updateSystemMode(SystemMode::TurnOnSequence);
-                delay(100);
+            updateSystemMode(SystemMode::TurnOnSequence);
+            delay(100);
 
-                initRadio();
-                tda->sync();
+            initRadio();
+            tda->sync();
 
-                DEBUG_LOG("System on\n");
+            DEBUG_LOG("System on\n");
 
-                break;
-            case SystemState::Off:
-                updateSystemMode(SystemMode::Idle);
+            break;
+        case SystemState::Off:
+            updateSystemMode(SystemMode::Idle);
 
-                // Shutdown the ICs here
-                // Came to off from on?
-                if(prevState == SystemState::On)
-                {
-                    shutdownRadio();
-                }
-                display->powerOff();
-                
-                delay(100);
-                digitalWrite(PWR_ENABLE, LOW);
-                analogWrite(BTN_BACKLIGHT, 0);
-                analogWrite(SCREEN_BACKLIGHT, 0);
+            // Shutdown the ICs here
+            // Came to off from on?
+            if (prevState == SystemState::On)
+            {
+                shutdownRadio();
+            }
+            display->powerOff();
 
-                DEBUG_LOG("System off\n");
+            delay(100);
+            digitalWrite(PWR_ENABLE, LOW);
+            analogWrite(BTN_BACKLIGHT, 0);
+            analogWrite(SCREEN_BACKLIGHT, 0);
 
-                break;
-            case SystemState::Standby:
-                
-                // Came to standby from on?
-                if(prevState == SystemState::On)
-                {
-                    shutdownRadio();
-                }
+            DEBUG_LOG("System off\n");
 
-                delay(100);
-                digitalWrite(PWR_ENABLE, LOW);
-                analogWrite(BTN_BACKLIGHT, 0);
-                analogWrite(SCREEN_BACKLIGHT, 120);
+            break;
+        case SystemState::Standby:
 
-                display->powerOn();
-                updateSystemMode(SystemMode::Idle);
+            // Came to standby from on?
+            if (prevState == SystemState::On)
+            {
+                shutdownRadio();
+            }
 
-                DEBUG_LOG("System Standby\n");
-                
-                break;
-        }   
+            delay(100);
+            digitalWrite(PWR_ENABLE, LOW);
+            analogWrite(BTN_BACKLIGHT, 0);
+            analogWrite(SCREEN_BACKLIGHT, 120);
+
+            display->powerOn();
+            updateSystemMode(SystemMode::Idle);
+
+            DEBUG_LOG("System Standby\n");
+
+            break;
+        }
 
         DEBUG_LOG("[S]: %d\n", (int)newState);
     }
@@ -225,66 +232,66 @@ private:
 
         // Do delayed transition stuff here.
         stopDelayedModeTransition();
-        switch(newMode)
+        switch (newMode)
         {
-            // Main Screens
-            case SystemMode::Idle:
-                if(systemState == SystemState::On)
+        // Main Screens
+        case SystemMode::Idle:
+            if (systemState == SystemState::On)
+            {
+#ifdef RADIO_ENABLED
+                uint16_t freq = radio->getFrequency();
+#else
+                uint16_t freq = 8870;
+#endif
+                switch (audioSource)
                 {
-                    uint16_t freq = 8870;
-                    switch(audioSource)
-                    {
-                        case AudioSource::Radio:
-                            // uint16_t freq = radio->getFrequency();
-                            display->fmDisplay(band, freq, nullptr);
-                            break;
-                        case AudioSource::Bluetooth:
-                            display->btDisplay();
-                            break;
-                        case AudioSource::Aux:
-                            display->auxDisplay();
-                            break;
-                        case AudioSource::USB:
-                            display->usbDisplay();
-                            break;
-                        case AudioSource::SD:
-                            display->sdDisplay();
-                            break;
-                        
-                    }
+                case AudioSource::Radio:
+                    display->fmDisplay(band, freq, nullptr);
+                    break;
+                case AudioSource::Bluetooth:
+                    display->btDisplay();
+                    break;
+                case AudioSource::Aux:
+                    display->auxDisplay();
+                    break;
+                case AudioSource::USB:
+                    display->usbDisplay();
+                    break;
+                case AudioSource::SD:
+                    display->sdDisplay();
+                    break;
                 }
-                else if(systemState == SystemState::Standby)
-                {
-                    display->standbyDisplay(14, 11, 2023, 10, 0, 25.0f, 5.0f);
-                }
-                break;
-            
-            // Overlay screens
-            case SystemMode::TurnOnSequence:
-                startDelayedModeTransition(SystemMode::Idle, TURN_ON_SEQUENCE_DISPLAY_TIME);
-                display->welcomeDisplay();
-                break;
-            case SystemMode::Volume:
-                startDelayedModeTransition(SystemMode::Idle, VOLUME_DISPLAY_TIME);
-                display->volumeDisplay(tda->volume());
-                break;
-            case SystemMode::StationSave:
-                startDelayedModeTransition(SystemMode::Idle, SAVE_STATION_DISPLAY_TIME);
-                display->saveStationDisplay(isCurrentStationSaved ? currentSavedStationBand : FMBand::FM);
-                break;
-            case SystemMode::InputSelection:
-                startDelayedModeTransition(SystemMode::Idle, INPUT_SELECTION_DISPLAY_TIME);
-                display->sourceChangeDisplay(audioSource, band);
-                break;
+            }
+            else if (systemState == SystemState::Standby)
+            {
+                display->standbyDisplay(14, 11, 2023, 10, 0, 25.0f, 5.0f);
+            }
+            break;
 
-
+        // Overlay screens
+        case SystemMode::TurnOnSequence:
+            startDelayedModeTransition(SystemMode::Idle, TURN_ON_SEQUENCE_DISPLAY_TIME);
+            display->welcomeDisplay();
+            break;
+        case SystemMode::Volume:
+            startDelayedModeTransition(SystemMode::Idle, VOLUME_DISPLAY_TIME);
+            display->volumeDisplay(tda->volume());
+            break;
+        case SystemMode::StationSave:
+            startDelayedModeTransition(SystemMode::Idle, SAVE_STATION_DISPLAY_TIME);
+            display->saveStationDisplay(isCurrentStationSaved ? currentSavedStationBand : FMBand::FM);
+            break;
+        case SystemMode::InputSelection:
+            startDelayedModeTransition(SystemMode::Idle, INPUT_SELECTION_DISPLAY_TIME);
+            display->sourceChangeDisplay(audioSource, band);
+            break;
         }
 
         DEBUG_LOG("[M]: %d\n", (int)newMode);
     }
 
     /// @brief Does a transition to the given mode after a delay.
-    /// @param delayMode 
+    /// @param delayMode
     void startDelayedModeTransition(SystemMode delayMode, unsigned long delay)
     {
         this->delayMode = delayMode;
@@ -338,7 +345,6 @@ public:
         stateBeforeIgnitionOff = SystemState::Standby;
     }
 
-
     /// @brief Should be called in init, to initialize the buttons, display, etc.
     void init()
     {
@@ -354,11 +360,11 @@ public:
         pinMode(S_LIGHT, INPUT_PULLDOWN);
 
         DEBUG_LOG("System initializing... Setting up radio\n");
-        // initRadio();
+        initRadio();
 
         DEBUG_LOG("System initializing... Setting Serial2 communication\n");
         Serial2.begin(115200, SERIAL_8N1, RXD2, TXD2);
-        
+
         Wire.setClock(300000);
         DEBUG_LOG("System initializing... Setting I2C communication\n");
 
@@ -379,7 +385,9 @@ public:
     /// @brief Should be called every loop to update input, display, etc.
     void update()
     {
-        // radio->checkRDS();
+#ifdef RADIO_ENABLED
+        radio->checkRDS();
+#endif
 
         // Delay check
         delayHelper->loop();
@@ -425,7 +433,6 @@ public:
         // Turn ICs on here.
         initRadio();
         tda->sync();
-
     }
 
     void ignitionOff()
@@ -441,21 +448,21 @@ public:
     void togglePower()
     {
         DEBUG_LOG("Toggle power\n");
-        switch(systemState)
+        switch (systemState)
         {
-            case SystemState::Off:
-            case SystemState::Standby:
-                updateSystemState(SystemState::On);
-                break;
-            case SystemState::On:
-                if(ignitionState)
-                {
-                    updateSystemState(SystemState::Standby);
-                }
-                else
-                {
-                    updateSystemState(SystemState::Off);
-                }
+        case SystemState::Off:
+        case SystemState::Standby:
+            updateSystemState(SystemState::On);
+            break;
+        case SystemState::On:
+            if (ignitionState)
+            {
+                updateSystemState(SystemState::Standby);
+            }
+            else
+            {
+                updateSystemState(SystemState::Off);
+            }
             break;
         }
     }
@@ -472,19 +479,19 @@ public:
 
     void increaseVolume()
     {
-        if(systemState != SystemState::On)
+        if (systemState != SystemState::On)
         {
             return;
         }
         DEBUG_LOG("Volume increase\n");
-        
+
         tda->volume(tda->volume() + 1);
         updateSystemMode(SystemMode::Volume);
     }
 
     void decreaseVolume()
     {
-        if(systemState != SystemState::On)
+        if (systemState != SystemState::On)
         {
             return;
         }
@@ -497,7 +504,7 @@ public:
 
     void openBassAndBalanceSettings()
     {
-        if(systemState != SystemState::On)
+        if (systemState != SystemState::On)
         {
             return;
         }
@@ -507,7 +514,7 @@ public:
 
     void openTrebleAndFadeSettings()
     {
-        if(systemState != SystemState::On)
+        if (systemState != SystemState::On)
         {
             return;
         }
@@ -517,7 +524,7 @@ public:
 
     void toggleBassBoost()
     {
-        if(systemState != SystemState::On)
+        if (systemState != SystemState::On)
         {
             return;
         }
@@ -527,7 +534,7 @@ public:
 
     void toggleLoudness()
     {
-        if(systemState != SystemState::On)
+        if (systemState != SystemState::On)
         {
             return;
         }
@@ -537,7 +544,7 @@ public:
 
     void toggleTraficAnnouncements()
     {
-        if(systemState != SystemState::On)
+        if (systemState != SystemState::On)
         {
             return;
         }
@@ -547,69 +554,73 @@ public:
 
     void onDownBtn()
     {
-        if(systemState != SystemState::On)
+        if (systemState != SystemState::On)
         {
             return;
         }
 
         DEBUG_LOG("Seek Down\n");
 
-        switch(audioSource)
+        switch (audioSource)
         {
-            case AudioSource::Radio:
-                // radio->seekDown();
-                updateSystemMode(SystemMode::Idle);
-                break;
+        case AudioSource::Radio:
+#ifdef RADIO_ENABLED
+            radio->seekDown();
+#endif
+            updateSystemMode(SystemMode::Idle);
+            break;
         }
     }
 
     void onUpBtn()
     {
-        if(systemState != SystemState::On)
+        if (systemState != SystemState::On)
         {
             return;
         }
 
         DEBUG_LOG("Seek Up\n");
 
-        switch(audioSource)
+        switch (audioSource)
         {
-            case AudioSource::Radio:
-                // radio->seekUp();
-                updateSystemMode(SystemMode::Idle);
-                break;
+        case AudioSource::Radio:
+#ifdef RADIO_ENABLED
+            radio->seekUp();
+#endif
+            updateSystemMode(SystemMode::Idle);
+            break;
         }
     }
 
     void selectNextInput()
     {
-        if(systemState != SystemState::On)
+        if (systemState != SystemState::On)
         {
             return;
         }
 
         DEBUG_LOG("Band\n");
 
-        switch(audioSource)
+        switch (audioSource)
         {
-            case AudioSource::Radio:
-                switch(band)
-                {
-                    case FMBand::FM1:
-                        band = FMBand::FM2;
-                        break;
-                    default:
-                        band = FMBand::FM1;
-                        audioSource = AudioSource::Aux;
-                        break;
-                }
+        case AudioSource::Radio:
+            switch (band)
+            {
+            case FMBand::FM1:
+                band = FMBand::FM2;
                 break;
-            case AudioSource::Aux:
-                audioSource = AudioSource::Bluetooth;
+            default:
+                band = FMBand::FM1;
+                audioSource = AudioSource::Aux;
                 break;
-            case AudioSource::Bluetooth:
-                audioSource = AudioSource::Radio;
-                break;
+            }
+            break;
+        case AudioSource::Aux:
+            audioSource = AudioSource::Bluetooth;
+            break;
+        case AudioSource::Bluetooth:
+            audioSource = AudioSource::Radio;
+            break;
 
             // TODO: Add functionality for these
             // case AudioSource::USB:
@@ -623,7 +634,7 @@ public:
 
     void findBestStations()
     {
-        if(systemState != SystemState::On)
+        if (systemState != SystemState::On)
         {
             return;
         }
@@ -633,201 +644,225 @@ public:
 
     void selectStationN1()
     {
-        if(systemState != SystemState::On)
+        if (systemState != SystemState::On)
         {
             return;
         }
 
         DEBUG_LOG("Station 1\n");
 
-        switch(audioSource)
+        switch (audioSource)
         {
-            case AudioSource::Radio:
-                // radio->setFrequency(savedStations[(int)band][0]);
-                updateSystemMode(SystemMode::Idle);
-                break;
+        case AudioSource::Radio:
+#ifdef RADIO_ENABLED
+            radio->setFrequency(savedStations[(int)band][0]);
+#endif
+            updateSystemMode(SystemMode::Idle);
+            break;
         }
     }
 
     void saveStationToN1()
     {
-        if(systemState != SystemState::On)
+        if (systemState != SystemState::On)
         {
             return;
         }
 
-        switch(audioSource)
+        switch (audioSource)
         {
-            case AudioSource::Radio:
-                // savedStations[(int)band][0] = radio->getFrequency();
-                updateSystemMode(SystemMode::StationSave);
-                break;
+        case AudioSource::Radio:
+#ifdef RADIO_ENABLED
+            savedStations[(int)band][0] = radio->getFrequency();
+#endif
+            updateSystemMode(SystemMode::StationSave);
+            break;
         }
     }
 
     void selectStationN2()
     {
-        if(systemState != SystemState::On)
+        if (systemState != SystemState::On)
         {
             return;
         }
 
         DEBUG_LOG("Station 2\n");
-        
-        switch(audioSource)
+
+        switch (audioSource)
         {
-            case AudioSource::Radio:
-                // radio->setFrequency(savedStations[(int)band][1]);
-                updateSystemMode(SystemMode::Idle);
-                break;
+        case AudioSource::Radio:
+#ifdef RADIO_ENABLED
+            radio->setFrequency(savedStations[(int)band][1]);
+#endif
+            updateSystemMode(SystemMode::Idle);
+            break;
         }
     }
 
     void saveStationToN2()
     {
-        if(systemState != SystemState::On)
+        if (systemState != SystemState::On)
         {
             return;
         }
 
-        switch(audioSource)
+        switch (audioSource)
         {
-            case AudioSource::Radio:
-                // savedStations[(int)band][1] = radio->getFrequency();
-                updateSystemMode(SystemMode::StationSave);
-                break;
+        case AudioSource::Radio:
+#ifdef RADIO_ENABLED
+            savedStations[(int)band][1] = radio->getFrequency();
+#endif
+            updateSystemMode(SystemMode::StationSave);
+            break;
         }
     }
 
     void selectStationN3()
     {
-        if(systemState != SystemState::On)
+        if (systemState != SystemState::On)
         {
             return;
         }
 
         DEBUG_LOG("Station 3\n");
-        switch(audioSource)
+        switch (audioSource)
         {
-            case AudioSource::Radio:
-                // radio->setFrequency(savedStations[(int)band][2]);
-                updateSystemMode(SystemMode::Idle);
-                break;
+        case AudioSource::Radio:
+#ifdef RADIO_ENABLED
+            radio->setFrequency(savedStations[(int)band][2]);
+#endif
+            updateSystemMode(SystemMode::Idle);
+            break;
         }
     }
 
     void saveStationToN3()
     {
-        if(systemState != SystemState::On)
+        if (systemState != SystemState::On)
         {
             return;
         }
 
-        switch(audioSource)
+        switch (audioSource)
         {
-            case AudioSource::Radio:
-                // savedStations[(int)band][2] = radio->getFrequency();
-                updateSystemMode(SystemMode::StationSave);
-                break;
+        case AudioSource::Radio:
+#ifdef RADIO_ENABLED
+            savedStations[(int)band][2] = radio->getFrequency();
+#endif
+            updateSystemMode(SystemMode::StationSave);
+            break;
         }
     }
 
     void selectStationN4()
     {
-        if(systemState != SystemState::On)
+        if (systemState != SystemState::On)
         {
             return;
         }
 
         DEBUG_LOG("Station 4\n");
-        switch(audioSource)
+        switch (audioSource)
         {
-            case AudioSource::Radio:
-                // radio->setFrequency(savedStations[(int)band][3]);
-                updateSystemMode(SystemMode::Idle);
-                break;
+        case AudioSource::Radio:
+#ifdef RADIO_ENABLED
+            radio->setFrequency(savedStations[(int)band][3]);
+#endif
+            updateSystemMode(SystemMode::Idle);
+            break;
         }
     }
 
     void saveStationToN4()
     {
-        if(systemState != SystemState::On)
+        if (systemState != SystemState::On)
         {
             return;
         }
 
-        switch(audioSource)
+        switch (audioSource)
         {
-            case AudioSource::Radio:
-                // savedStations[(int)band][3] = radio->getFrequency();
-                updateSystemMode(SystemMode::StationSave);
-                break;
+        case AudioSource::Radio:
+#ifdef RADIO_ENABLED
+            savedStations[(int)band][3] = radio->getFrequency();
+#endif
+            updateSystemMode(SystemMode::StationSave);
+            break;
         }
     }
 
     void selectStationN5()
     {
-        if(systemState != SystemState::On)
+        if (systemState != SystemState::On)
         {
             return;
         }
 
         DEBUG_LOG("Station 5\n");
-        switch(audioSource)
+        switch (audioSource)
         {
-            case AudioSource::Radio:
-                // radio->setFrequency(savedStations[(int)band][4]);
-                updateSystemMode(SystemMode::Idle);
-                break;
+        case AudioSource::Radio:
+#ifdef RADIO_ENABLED
+            radio->setFrequency(savedStations[(int)band][4]);
+#endif
+            updateSystemMode(SystemMode::Idle);
+            break;
         }
     }
 
     void saveStationToN5()
     {
-        if(systemState != SystemState::On)
+        if (systemState != SystemState::On)
         {
             return;
         }
 
-        switch(audioSource)
+        switch (audioSource)
         {
-            case AudioSource::Radio:
-                // savedStations[(int)band][4] = radio->getFrequency();
-                updateSystemMode(SystemMode::StationSave);
-                break;
+        case AudioSource::Radio:
+#ifdef RADIO_ENABLED
+            savedStations[(int)band][4] = radio->getFrequency();
+#endif
+            updateSystemMode(SystemMode::StationSave);
+            break;
         }
     }
 
     void selectStationN6()
     {
-        if(systemState != SystemState::On)
+        if (systemState != SystemState::On)
         {
             return;
         }
 
         DEBUG_LOG("Station 6\n");
-        switch(audioSource)
+        switch (audioSource)
         {
-            case AudioSource::Radio:
-                // radio->setFrequency(savedStations[(int)band][5]);
-                updateSystemMode(SystemMode::Idle);
-                break;
+        case AudioSource::Radio:
+#ifdef RADIO_ENABLED
+            radio->setFrequency(savedStations[(int)band][5]);
+#endif
+            updateSystemMode(SystemMode::Idle);
+            break;
         }
     }
 
     void saveStationToN6()
     {
-        if(systemState != SystemState::On)
+        if (systemState != SystemState::On)
         {
             return;
         }
 
-        switch(audioSource)
+        switch (audioSource)
         {
-            case AudioSource::Radio:
-                // savedStations[(int)band][5] = radio->getFrequency();
-                updateSystemMode(SystemMode::StationSave);
-                break;
+        case AudioSource::Radio:
+#ifdef RADIO_ENABLED
+            savedStations[(int)band][5] = radio->getFrequency();
+#endif
+            updateSystemMode(SystemMode::StationSave);
+            break;
         }
     }
 
