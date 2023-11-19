@@ -13,24 +13,24 @@
 #include <SingleButton.h>
 #include <MultiplexedButton.h>
 
-// SI4703
-#include <radio.h>
-#include <SI4703.h>
-#include <RDSParser.h>
-
 // TDA7313
 #include <Tda7313.h>
 
 // BT201
 #include <BT201.h>
 
-// #define DEBUG_LOG_ENABLED
+// SI4703
+#include <radio.h>
+#include <SI4703.h>
+#include <RDSParser.h>
 
-// #ifdef DEBUG_LOG_ENABLED
-// #define DEBUG_LOG(format, ...) Serial.printf(format, ##__VA_ARGS__)
-// #else
-// #define DEBUG_LOG(format, ...)
-// #endif
+#define DEBUG_LOG_ENABLED
+
+#ifdef DEBUG_LOG_ENABLED
+#define DEBUG_LOG(format, ...) Serial.printf(format, ##__VA_ARGS__)
+#else
+#define DEBUG_LOG(format, ...)
+#endif
 
 #define RADIO_ENABLED
 
@@ -67,6 +67,11 @@
 #define VOLUME_DISPLAY_TIME 2000
 #define SAVE_STATION_DISPLAY_TIME 2000
 #define INPUT_SELECTION_DISPLAY_TIME 2000
+#define BASS_DISPLAY_TIME 2000
+#define BALANCE_DISPLAY_TIME 2000
+#define TREBLE_DISPLAY_TIME 2000
+#define FADER_DISPLAY_TIME 2000
+#define LOUDNESS_DISPLAY_TIME 2000
 
 class System
 {
@@ -75,13 +80,13 @@ private:
     DisplayManager *display;
 
 // Radio
-#ifdef RADIO_ENABLED
-    SI4703 *radio;
+    SI4703 radio = SI4703();
 // static RDSParser *rdsParser;
+#ifdef RADIO_ENABLED
 // static String rdsServiceName;
 // static String rdsRadioText;
 #endif
-    uint16_t stationAtShutdown;
+    uint16_t stationAtShutdown = 8870;
 
     // TDA7313
     Tda7313 *tda;
@@ -108,37 +113,37 @@ private:
     void initRadio()
     {
 #ifdef RADIO_ENABLED
-        radio->setup(RADIO_RESETPIN, RADIO_RST);
-        radio->setup(RADIO_MODEPIN, SDA_PIN);
+        radio.setup(RADIO_RESETPIN, RADIO_RST);
+        radio.setup(RADIO_MODEPIN, SDA_PIN);
 
-        radio->debugEnable(true); // Turns debug information on
-        radio->_wireDebug(true);  // Turns I2C debug information on
+        // // Enable information to the Serial port
+        // radio.debugEnable(true);
+        // radio._wireDebug(true);
 
-        radio->setup(RADIO_FMSPACING, RADIO_FMSPACING_100);
-        radio->setup(RADIO_DEEMPHASIS, RADIO_DEEMPHASIS_50);
+        // // Set FM Options for Europe
+        radio.setup(RADIO_FMSPACING, RADIO_FMSPACING_100);   // for EUROPE
+        radio.setup(RADIO_DEEMPHASIS, RADIO_DEEMPHASIS_50);  // for EUROPE
 
-        radio->initWire(Wire);
+        // // Initialize the Radio
+        radio.initWire(Wire);
 
-        radio->debugEnable(true); // Turns debug information on
-        // radio._wireDebug(true);  // Turns I2C debug information on
+        // radio.debugEnable(true);
+        // radio._wireDebug(true);
 
-        radio->setBandFrequency(RADIO_BAND_FM, stationAtShutdown);
-        radio->setVolume(15);
-        radio->setMono(false);
-        radio->setMute(false);
-        radio->setSoftMute(true);
-
-// radio->attachReceiveRDS(RDSProcess);
-// rdsParser->attachServiceNameCallback(RDSServiceNameUpdate);
-// rdsParser->attachTextCallback(RDSRadioTextUpdate);
+        // // Set all radio setting to the fixed values.
+        radio.setBandFrequency(RADIO_BAND_FM, stationAtShutdown);
+        radio.setVolume(15);
+        radio.setMono(false);
+        radio.setMute(false);
+        radio.setSoftMute(true);
 #endif
     }
 
     void shutdownRadio()
     {
 #ifdef RADIO_ENABLED
-        stationAtShutdown = radio->getFrequency();
-        radio->setMute(true);
+        stationAtShutdown = radio.getFrequency();
+        radio.setMute(true);
 #endif
     }
 
@@ -235,18 +240,19 @@ private:
         switch (newMode)
         {
         // Main Screens
+        default:
         case SystemMode::Idle:
             if (systemState == SystemState::On)
             {
 #ifdef RADIO_ENABLED
-                uint16_t freq = radio->getFrequency();
+                uint16_t freq = radio.getFrequency();
 #else
                 uint16_t freq = 8870;
 #endif
                 switch (audioSource)
                 {
                 case AudioSource::Radio:
-                    display->fmDisplay(band, freq, nullptr);
+                    display->fmDisplay(isCurrentStationSaved ? band : FMBand::FM, freq, nullptr);
                     break;
                 case AudioSource::Bluetooth:
                     display->btDisplay();
@@ -285,6 +291,26 @@ private:
             startDelayedModeTransition(SystemMode::Idle, INPUT_SELECTION_DISPLAY_TIME);
             display->sourceChangeDisplay(audioSource, band);
             break;
+        case SystemMode::Bass:
+            startDelayedModeTransition(SystemMode::Idle, BASS_DISPLAY_TIME);
+            display->bassDisplay(tda->bass());
+            break;
+        case SystemMode::Balance:
+            startDelayedModeTransition(SystemMode::Idle, BALANCE_DISPLAY_TIME);
+            display->balanceDisplay(0);
+            break;
+        case SystemMode::Treble:
+            startDelayedModeTransition(SystemMode::Idle, TREBLE_DISPLAY_TIME);
+            display->trebleDisplay(tda->treble());
+            break;
+        case SystemMode::Fader:
+            startDelayedModeTransition(SystemMode::Idle, FADER_DISPLAY_TIME);
+            display->faderDisplay(0);
+            break;
+        case SystemMode::Loudness:
+            startDelayedModeTransition(SystemMode::Idle, LOUDNESS_DISPLAY_TIME);
+            display->loudnessDisplay(tda->loud());
+            break;
         }
 
         DEBUG_LOG("[M]: %d\n", (int)newMode);
@@ -304,6 +330,25 @@ private:
     {
         delayHelper->stopDelay();
         hasDelayStarted = false;
+    }
+
+    void storeRadioStation(uint8_t slot)
+    {
+#ifdef RADIO_ENABLED
+            savedStations[(int)band][0] = radio.getFrequency();
+#endif
+            isCurrentStationSaved = true;
+            currentSavedStationBand = band;
+            delay(SAVE_STATION_PAUSE);
+    }
+
+    void tuneToSavedRadioStation(uint8_t slot)
+    {
+#ifdef RADIO_ENABLED
+            radio.setFrequency(savedStations[(int)band][0]);
+#endif
+            isCurrentStationSaved = true;
+            currentSavedStationBand = band;
     }
 
 public:
@@ -329,8 +374,7 @@ public:
         delayMode = SystemMode::Idle;
 
         // Radio
-        // radio = new SI4703();
-        // rdsParser = new RDSParser();
+        // this.rdsParser = rdsParser;
 
         // TDA7313
         tda = new Tda7313(TDA_ADDRESS);
@@ -348,27 +392,26 @@ public:
     /// @brief Should be called in init, to initialize the buttons, display, etc.
     void init()
     {
+        #ifdef DEBUG_LOG_ENABLED
+        Serial.begin(115200);
+        #endif
         DEBUG_LOG("System initializing...\n");
 
         // Output
         pinMode(PWR_ENABLE, OUTPUT);
+        digitalWrite(PWR_ENABLE, LOW);
         pinMode(BTN_BACKLIGHT, OUTPUT);
-        pinMode(RADIO_RST, OUTPUT);
+        analogWrite(BTN_BACKLIGHT, 0);
 
         // Input sensors
         pinMode(S_TEMPERATURE, INPUT_PULLDOWN);
         pinMode(S_LIGHT, INPUT_PULLDOWN);
 
+        delay(200);
         DEBUG_LOG("System initializing... Setting up radio\n");
         initRadio();
 
-        DEBUG_LOG("System initializing... Setting Serial2 communication\n");
-        Serial2.begin(115200, SERIAL_8N1, RXD2, TXD2);
-
-        Wire.setClock(300000);
-        DEBUG_LOG("System initializing... Setting I2C communication\n");
-
-        Wire.begin(SDA_PIN, SCL_PIN);
+        delay(200);
         DEBUG_LOG("System initializing... Setting up display\n");
         display = new DisplayManager(LCD_ADDRESS, BTN_BACKLIGHT);
 
@@ -377,7 +420,9 @@ public:
         initTDA();
         delay(200);
 
-        Serial.begin(115200);
+        delay(200);
+        DEBUG_LOG("System initializing... Setting Serial2 communication\n");
+        Serial2.begin(115200, SERIAL_8N1, RXD2, TXD2);
 
         DEBUG_LOG("System initialized\n");
     }
@@ -386,7 +431,7 @@ public:
     void update()
     {
 #ifdef RADIO_ENABLED
-        radio->checkRDS();
+        // radio.checkRDS();
 #endif
 
         // Delay check
@@ -429,10 +474,6 @@ public:
         stateBeforeIgnitionOn = systemState;
 
         updateSystemState(stateBeforeIgnitionOff);
-
-        // Turn ICs on here.
-        initRadio();
-        tda->sync();
     }
 
     void ignitionOff()
@@ -485,8 +526,22 @@ public:
         }
         DEBUG_LOG("Volume increase\n");
 
-        tda->volume(tda->volume() + 1);
-        updateSystemMode(SystemMode::Volume);
+        switch(systemMode)
+        {
+            case SystemMode::Treble:
+                tda->treble(tda->treble() + 1);
+                updateSystemMode(SystemMode::Treble);
+                break;
+            case SystemMode::Bass:
+                tda->bass(tda->bass() + 1);
+                updateSystemMode(SystemMode::Bass);
+                break;
+            default:
+                tda->volume(tda->volume() + 1);
+                updateSystemMode(SystemMode::Volume);
+                break;
+        }
+        
     }
 
     void decreaseVolume()
@@ -498,8 +553,21 @@ public:
 
         DEBUG_LOG("Volume decrease\n");
 
-        tda->volume(tda->volume() - 1);
-        updateSystemMode(SystemMode::Volume);
+        switch(systemMode)
+        {
+            case SystemMode::Treble:
+                tda->treble(tda->treble() - 1);
+                updateSystemMode(SystemMode::Treble);
+                break;
+            case SystemMode::Bass:
+                tda->bass(tda->bass() - 1);
+                updateSystemMode(SystemMode::Bass);
+                break;
+            default:
+                tda->volume(tda->volume() - 1);
+                updateSystemMode(SystemMode::Volume);
+                break;
+        }
     }
 
     void openBassAndBalanceSettings()
@@ -510,6 +578,19 @@ public:
         }
 
         DEBUG_LOG("Bass/Balance\n");
+
+        switch (systemMode)
+        {
+        case SystemMode::Bass:
+            updateSystemMode(SystemMode::Balance);
+            break;
+        case SystemMode::Balance:
+            updateSystemMode(SystemMode::Bass);
+            break;
+        default:
+            updateSystemMode(SystemMode::Bass);
+            break;
+        }
     }
 
     void openTrebleAndFadeSettings()
@@ -520,6 +601,19 @@ public:
         }
 
         DEBUG_LOG("Treble/Fader\n");
+
+        switch (systemMode)
+        {
+        case SystemMode::Treble:
+            updateSystemMode(SystemMode::Fader);
+            break;
+        case SystemMode::Fader:
+            updateSystemMode(SystemMode::Treble);
+            break;
+        default:
+            updateSystemMode(SystemMode::Treble);
+            break;
+        }
     }
 
     void toggleBassBoost()
@@ -540,9 +634,12 @@ public:
         }
 
         DEBUG_LOG("Boost/Loudness\n");
+
+        tda->loud(!tda->loud());
+        updateSystemMode(SystemMode::Loudness);
     }
 
-    void toggleTraficAnnouncements()
+    void toggleTrafficAnnouncements()
     {
         if (systemState != SystemState::On)
         {
@@ -565,8 +662,9 @@ public:
         {
         case AudioSource::Radio:
 #ifdef RADIO_ENABLED
-            radio->seekDown();
+            radio.seekDown();
 #endif
+            isCurrentStationSaved = false;
             updateSystemMode(SystemMode::Idle);
             break;
         }
@@ -585,8 +683,9 @@ public:
         {
         case AudioSource::Radio:
 #ifdef RADIO_ENABLED
-            radio->seekUp();
+            radio.seekUp();
 #endif
+            isCurrentStationSaved = false;
             updateSystemMode(SystemMode::Idle);
             break;
         }
@@ -599,7 +698,7 @@ public:
             return;
         }
 
-        DEBUG_LOG("Band\n");
+        DEBUG_LOG("Next Input\n");
 
         switch (audioSource)
         {
@@ -612,14 +711,17 @@ public:
             default:
                 band = FMBand::FM1;
                 audioSource = AudioSource::Aux;
+                tda->input(AUDIO_IN_AUX);
                 break;
             }
             break;
         case AudioSource::Aux:
             audioSource = AudioSource::Bluetooth;
+            tda->input(AUDIO_IN_BT_USB_SD);
             break;
         case AudioSource::Bluetooth:
             audioSource = AudioSource::Radio;
+            tda->input(AUDIO_IN_RADIO);
             break;
 
             // TODO: Add functionality for these
@@ -630,6 +732,7 @@ public:
             //     audioSource = AudioSource::USB;
             //     break;
         }
+        updateSystemMode(SystemMode::InputSelection);
     }
 
     void findBestStations()
@@ -654,9 +757,7 @@ public:
         switch (audioSource)
         {
         case AudioSource::Radio:
-#ifdef RADIO_ENABLED
-            radio->setFrequency(savedStations[(int)band][0]);
-#endif
+            tuneToSavedRadioStation(0);
             updateSystemMode(SystemMode::Idle);
             break;
         }
@@ -672,9 +773,7 @@ public:
         switch (audioSource)
         {
         case AudioSource::Radio:
-#ifdef RADIO_ENABLED
-            savedStations[(int)band][0] = radio->getFrequency();
-#endif
+            storeRadioStation(0);
             updateSystemMode(SystemMode::StationSave);
             break;
         }
@@ -692,9 +791,7 @@ public:
         switch (audioSource)
         {
         case AudioSource::Radio:
-#ifdef RADIO_ENABLED
-            radio->setFrequency(savedStations[(int)band][1]);
-#endif
+            tuneToSavedRadioStation(1);
             updateSystemMode(SystemMode::Idle);
             break;
         }
@@ -710,9 +807,7 @@ public:
         switch (audioSource)
         {
         case AudioSource::Radio:
-#ifdef RADIO_ENABLED
-            savedStations[(int)band][1] = radio->getFrequency();
-#endif
+            storeRadioStation(1);
             updateSystemMode(SystemMode::StationSave);
             break;
         }
@@ -729,9 +824,7 @@ public:
         switch (audioSource)
         {
         case AudioSource::Radio:
-#ifdef RADIO_ENABLED
-            radio->setFrequency(savedStations[(int)band][2]);
-#endif
+            tuneToSavedRadioStation(2);
             updateSystemMode(SystemMode::Idle);
             break;
         }
@@ -747,9 +840,7 @@ public:
         switch (audioSource)
         {
         case AudioSource::Radio:
-#ifdef RADIO_ENABLED
-            savedStations[(int)band][2] = radio->getFrequency();
-#endif
+            storeRadioStation(2);
             updateSystemMode(SystemMode::StationSave);
             break;
         }
@@ -766,9 +857,7 @@ public:
         switch (audioSource)
         {
         case AudioSource::Radio:
-#ifdef RADIO_ENABLED
-            radio->setFrequency(savedStations[(int)band][3]);
-#endif
+            tuneToSavedRadioStation(3);
             updateSystemMode(SystemMode::Idle);
             break;
         }
@@ -784,9 +873,7 @@ public:
         switch (audioSource)
         {
         case AudioSource::Radio:
-#ifdef RADIO_ENABLED
-            savedStations[(int)band][3] = radio->getFrequency();
-#endif
+            storeRadioStation(3);
             updateSystemMode(SystemMode::StationSave);
             break;
         }
@@ -803,9 +890,7 @@ public:
         switch (audioSource)
         {
         case AudioSource::Radio:
-#ifdef RADIO_ENABLED
-            radio->setFrequency(savedStations[(int)band][4]);
-#endif
+            tuneToSavedRadioStation(4);
             updateSystemMode(SystemMode::Idle);
             break;
         }
@@ -821,9 +906,7 @@ public:
         switch (audioSource)
         {
         case AudioSource::Radio:
-#ifdef RADIO_ENABLED
-            savedStations[(int)band][4] = radio->getFrequency();
-#endif
+            storeRadioStation(4);
             updateSystemMode(SystemMode::StationSave);
             break;
         }
@@ -840,9 +923,7 @@ public:
         switch (audioSource)
         {
         case AudioSource::Radio:
-#ifdef RADIO_ENABLED
-            radio->setFrequency(savedStations[(int)band][5]);
-#endif
+            tuneToSavedRadioStation(5);
             updateSystemMode(SystemMode::Idle);
             break;
         }
@@ -858,14 +939,11 @@ public:
         switch (audioSource)
         {
         case AudioSource::Radio:
-#ifdef RADIO_ENABLED
-            savedStations[(int)band][5] = radio->getFrequency();
-#endif
+            storeRadioStation(5);
             updateSystemMode(SystemMode::StationSave);
             break;
         }
     }
-
 #pragma endregion
 };
 

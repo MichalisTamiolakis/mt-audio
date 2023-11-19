@@ -88,7 +88,7 @@ public:
                 lcd->print("BST ");
                 break;
             default:
-                lcd->print("  ");
+                lcd->print("    ");
                 break;
         }
 
@@ -157,21 +157,22 @@ public:
         lcd->setCursor(0,2);
         switch(source){
             case AudioSource::Radio:
-            switch(band)
-            {
-                case FMBand::FM1:
-                    lcd->print("      RADIO FM1     ");
-                    break;
-                case FMBand::FM2:
-                    lcd->print("      RADIO FM2     ");
-                    break;
-                case FMBand::FMBst:
-                    lcd->print("BEST SIGNAL STATIONS");
-                    break;
-                default:
-                    lcd->print("      RADIO FM      ");
-                    break;
-            }
+                switch(band)
+                {
+                    case FMBand::FM1:
+                        lcd->print("      RADIO FM1     ");
+                        break;
+                    case FMBand::FM2:
+                        lcd->print("      RADIO FM2     ");
+                        break;
+                    case FMBand::FMBst:
+                        lcd->print("BEST SIGNAL STATIONS");
+                        break;
+                    default:
+                        lcd->print("      RADIO FM      ");
+                        break;
+                }
+                break;
             case AudioSource::Aux:
                 lcd->print("        AUX         ");
                 break;
@@ -197,6 +198,62 @@ public:
         lcd->print(volume);
         lcd->print("         ");
         clearLine(3);
+    }
+
+    void bassDisplay(uint8_t bass)
+    {
+        lcd->setCursor(0,1);
+        lcd->print("        BASS        ");
+        lcd->setCursor(0,2);
+        lcd->print("         ");
+        lcd->print(bass - 7);
+        lcd->print("         ");
+        clearLine(3);
+    }
+
+    void trebleDisplay(uint8_t treble)
+    {
+        lcd->setCursor(0,1);
+        lcd->print("       TREBLE       ");
+        lcd->setCursor(0,2);
+        lcd->print("         ");
+        lcd->print(treble - 7);
+        lcd->print("         ");
+        clearLine(3);
+    }
+
+    void balanceDisplay(uint8_t balance)
+    {
+        lcd->setCursor(0,1);
+        lcd->print("       BALANCE      ");
+        lcd->setCursor(0,2);
+        lcd->print("         ");
+        lcd->print(balance);
+        lcd->print("         ");
+        clearLine(3);
+    }
+
+    void faderDisplay(uint8_t fader)
+    {
+        lcd->setCursor(0,1);
+        lcd->print("        FADER       ");
+        lcd->setCursor(0,2);
+        lcd->print("         ");
+        lcd->print(fader);
+        lcd->print("         ");
+        clearLine(3);
+    }
+
+    void loudnessDisplay(bool loudness)
+    {
+        lcd->clear();
+        lcd->setCursor(0,1);
+        lcd->print("      LOUDNESS      ");
+        lcd->setCursor(0,2);
+        if(loudness)
+            lcd->print("        ON        ");
+        else
+            lcd->print("        OFF       ");
     }
 
     // Radio Only Displays

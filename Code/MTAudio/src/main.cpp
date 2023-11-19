@@ -1,10 +1,5 @@
 #include <Arduino.h>
 #include <WiFi.h>
-#include <AsyncTCP.h>
-#include <ESPAsyncWebServer.h>
-#include <WebSerial.h>
-
-#define DEBUG_LOG(format, ...) WebSerial.printf(format, ##__VA_ARGS__)
 
 #include <System.h>
 
@@ -38,10 +33,6 @@
 
 // Ignition Sensing pin
 #define S_IGNITION 32
-
-AsyncWebServer server(80);
-const char* ssid = "Michalis";          // Your WiFi SSID
-const char* password = "2810225674";  // Your WiFi Password
 
 System radioSystem = System();
 
@@ -127,7 +118,7 @@ void toggleLoudness()
 
 void toggleTraficAnnouncements()
 {
-    radioSystem.toggleTraficAnnouncements();
+    radioSystem.toggleTrafficAnnouncements();
 }
 
 void onDownBtn()
@@ -234,16 +225,17 @@ void initButtons()
     treFadBtn = new MultiplexedButton(BUTTON_SINGLE, BTN_B0, BTN_B1, BTN_B2, BTN_B3, BTN_B4, TRE_FAD, 50, 300);
     treFadBtn->onPress(openTrebleAndFadeSettings);
 
-    bstLdnBtn = new MultiplexedButton(BUTTON_SINGLE, BTN_B0, BTN_B1, BTN_B2, BTN_B3, BTN_B4, BST_LDN, 50, 300);
-    bstLdnBtn->onPress(toggleLoudness);
+    bstLdnBtn = new MultiplexedButton(BUTTON_LONG, BTN_B0, BTN_B1, BTN_B2, BTN_B3, BTN_B4, BST_LDN, 50, 300);
+    bstLdnBtn->onPress(findBestStations);
+    bstLdnBtn->onLongPress(toggleLoudness);
 
     taBtn = new MultiplexedButton(BUTTON_SINGLE, BTN_B0, BTN_B1, BTN_B2, BTN_B3, BTN_B4, TA, 50, 300);
     taBtn->onPress(toggleTraficAnnouncements);
 
-    downBtn = new MultiplexedButton(BUTTON_SINGLE, BTN_B0, BTN_B1, BTN_B2, BTN_B3, BTN_B4, DOWN, 50, 300);
+    downBtn = new MultiplexedButton(BUTTON_REPEAT, BTN_B0, BTN_B1, BTN_B2, BTN_B3, BTN_B4, DOWN, 50, 300);
     downBtn->onPress(onDownBtn);
 
-    upBtn = new MultiplexedButton(BUTTON_SINGLE, BTN_B0, BTN_B1, BTN_B2, BTN_B3, BTN_B4, UP, 50, 300);
+    upBtn = new MultiplexedButton(BUTTON_REPEAT, BTN_B0, BTN_B1, BTN_B2, BTN_B3, BTN_B4, UP, 50, 300);
     upBtn->onPress(onUpBtn);
 
     bandManBtn = new MultiplexedButton(BUTTON_SINGLE, BTN_B0, BTN_B1, BTN_B2, BTN_B3, BTN_B4, BND_MAN, 50, 300);
@@ -303,23 +295,12 @@ void updateButtons()
 
 void setup()
 {
-    delay(3000);
-
-    WiFi.mode(WIFI_STA);
-    WiFi.begin(ssid, password);
-    if (WiFi.waitForConnectResult() != WL_CONNECTED) {
-        return;
-    }
-    // WebSerial is accessible at "<IP Address>/webserial" in browser
-    WebSerial.begin(&server);
-    server.begin();
-
-    delay(10000);
-    WebSerial.println("Hello line");
-    DEBUG_LOG("Hello World!\n");
-
     pinMode(S_IGNITION, INPUT_PULLDOWN);
+
+    delay(1000);
     radioSystem.init();
+
+    delay(1000);
     initButtons();
 }
 
@@ -328,7 +309,7 @@ void loop()
     // Ignition state change check
     if (digitalRead(S_IGNITION) != previousIgnitionState)
     {
-        delay(1000); // Crude debounce
+        delay(300); // Crude debounce
         bool ignitionState = digitalRead(S_IGNITION);
         if (ignitionState != previousIgnitionState)
         {

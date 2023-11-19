@@ -17,7 +17,7 @@ enum class SystemMode
     Bass,
     Treble,
     Balance,
-    Fade,
+    Fader,
     Loudness,
 
     BstLdn,
