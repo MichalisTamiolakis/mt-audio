@@ -24,6 +24,9 @@
 #include <SI4703.h>
 #include <RDSParser.h>
 
+// DS3231
+#include <RTClib.h>
+
 #define DEBUG_LOG_ENABLED
 
 #ifdef DEBUG_LOG_ENABLED
@@ -90,7 +93,12 @@ private:
 
     // TDA7313
     Tda7313 *tda;
+
+    // BT201
     BT201 *bt201;
+
+    // RTC
+    RTC_DS3231 *rtc;
 
     SystemState stateBeforeIgnitionOn = SystemState::Off;
     SystemState stateBeforeIgnitionOff = SystemState::Standby;
@@ -162,6 +170,13 @@ private:
         tda->attRF(0); //  0.......13  0dB.........-36.25dB
         tda->attLR(0); //  0.......13  0dB.........-36.25dB
         tda->attRR(0); //  0.......13  0dB.........-36.25dB
+    }
+
+    void initRTC()
+    {
+        rtc->begin();
+        DateTime dt(2021, 1, 1, 0, 0, 0);
+        rtc->adjust(dt);
     }
 
     void updateSystemState(SystemState newState)
@@ -378,7 +393,12 @@ public:
 
         // TDA7313
         tda = new Tda7313(TDA_ADDRESS);
+        
+        // BT201
         bt201 = new BT201(&Serial2);
+
+        // DS3231
+        rtc = new RTC_DS3231();
 
         systemState = SystemState::Off;
         systemMode = SystemMode::Idle;
@@ -418,7 +438,10 @@ public:
         delay(200);
         DEBUG_LOG("System initializing... Setting up EQ\n");
         initTDA();
+
         delay(200);
+        DEBUG_LOG("System initializing... Setting up RTC\n");
+        initRTC();
 
         delay(200);
         DEBUG_LOG("System initializing... Setting Serial2 communication\n");
