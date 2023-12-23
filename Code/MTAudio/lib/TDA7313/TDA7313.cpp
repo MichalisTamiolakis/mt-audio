@@ -45,6 +45,22 @@ void Tda7313::sla(int arg){
 	Wire.endTransmission();
 }
 
+void Tda7313::sla(int val, int input)
+{
+	if(val < 0 || val > 3 || input < 1 || input > 3) return;
+	// Update realtime val
+	if(input == iInput)
+	{
+		Tda7313::sla(val);
+	}
+
+	// Just store value for next time
+	else
+	{
+		_sla[input-1] = val;
+	}
+}
+
 void Tda7313::loud(bool loudEnabled){
 	if(loudEnabled) iSelector &= ~(1<<2); else iSelector |= (1<<2);
 	_loud = loudEnabled;

@@ -41,6 +41,7 @@ class Tda7313
 	Tda7313(int address);
 		
 	void sla(int arg);			// 0,1,2,3      0dB, +3.75dB, +7.5dB, +11.25dB
+	void sla(int val, int input);	// val: 0,1,2,3      0dB, +3.75dB, +7.5dB, +11.25dB, input: 1,2,3    Stereo 1, Stereo 2, Stereo 3
 	void loud(bool loudEnabled);	// Loudness
 	void input(int arg);			// 1,2,3    Stereo 1, Stereo 2, Stereo 3
 	void volume(int arg);			//  0.......17    -78.75dB............0dB
