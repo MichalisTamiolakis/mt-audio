@@ -354,7 +354,9 @@ private:
 #endif
             isCurrentStationSaved = true;
             currentSavedStationBand = band;
+            tda->mute(true);
             delay(SAVE_STATION_PAUSE);
+            tda->mute(false);
     }
 
     void tuneToSavedRadioStation(uint8_t slot)
