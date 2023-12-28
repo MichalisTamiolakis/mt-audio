@@ -350,7 +350,7 @@ private:
     void storeRadioStation(uint8_t slot)
     {
 #ifdef RADIO_ENABLED
-            savedStations[(int)band][0] = radio.getFrequency();
+            savedStations[(int)band][slot] = radio.getFrequency();
 #endif
             isCurrentStationSaved = true;
             currentSavedStationBand = band;
@@ -362,7 +362,7 @@ private:
     void tuneToSavedRadioStation(uint8_t slot)
     {
 #ifdef RADIO_ENABLED
-            radio.setFrequency(savedStations[(int)band][0]);
+            radio.setFrequency(savedStations[(int)band][slot]);
 #endif
             isCurrentStationSaved = true;
             currentSavedStationBand = band;
