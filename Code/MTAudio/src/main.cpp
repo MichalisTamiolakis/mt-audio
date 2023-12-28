@@ -131,6 +131,11 @@ void onUpBtn()
     radioSystem.onUpBtn();
 }
 
+void toggleSeekMode()
+{
+    radioSystem.toggleSeekMode();
+}
+
 void selectNextInput()
 {
     radioSystem.selectNextInput();
@@ -139,6 +144,11 @@ void selectNextInput()
 void findBestStations()
 {
     radioSystem.findBestStations();
+}
+
+void switchToAutomaticStationsBand()
+{
+    radioSystem.switchToAutomaticStationsBand();
 }
 
 void selectStationN1()
@@ -238,11 +248,12 @@ void initButtons()
     upBtn = new MultiplexedButton(BUTTON_REPEAT, BTN_B0, BTN_B1, BTN_B2, BTN_B3, BTN_B4, UP, 50, 300);
     upBtn->onPress(onUpBtn);
 
-    bandManBtn = new MultiplexedButton(BUTTON_SINGLE, BTN_B0, BTN_B1, BTN_B2, BTN_B3, BTN_B4, BND_MAN, 50, 300);
+    bandManBtn = new MultiplexedButton(BUTTON_LONG, BTN_B0, BTN_B1, BTN_B2, BTN_B3, BTN_B4, BND_MAN, 50, 300);
     bandManBtn->onPress(selectNextInput);
+    bandManBtn->onLongPress(toggleSeekMode);
 
     astBtn = new MultiplexedButton(BUTTON_SINGLE, BTN_B0, BTN_B1, BTN_B2, BTN_B3, BTN_B4, AST, 50, 300);
-    astBtn->onPress(findBestStations);
+    astBtn->onPress(switchToAutomaticStationsBand);
 
     n1Btn = new MultiplexedButton(BUTTON_LONG, BTN_B0, BTN_B1, BTN_B2, BTN_B3, BTN_B4, N1, 50, 1000);
     n1Btn->onPress(selectStationN1);

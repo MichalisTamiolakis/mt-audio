@@ -75,6 +75,7 @@
 #define TREBLE_DISPLAY_TIME 2000
 #define FADER_DISPLAY_TIME 2000
 #define LOUDNESS_DISPLAY_TIME 2000
+#define SEEK_MODE_DISPLAY_TIME 2000
 
 class System
 {
@@ -326,6 +327,10 @@ private:
             startDelayedModeTransition(SystemMode::Idle, LOUDNESS_DISPLAY_TIME);
             display->loudnessDisplay(tda->loud());
             break;
+        case SystemMode::SeekModeSet:
+            startDelayedModeTransition(SystemMode::Idle, SEEK_MODE_DISPLAY_TIME);
+            display->seekModeDisplay(seekMode);
+            break;
         }
 
         DEBUG_LOG("[M]: %d\n", (int)newMode);
@@ -373,6 +378,7 @@ public:
     SystemMode systemMode = SystemMode::Idle;
     AudioSource audioSource;
     FMBand band = FMBand::FM1;
+    RadioSeekMode seekMode = RadioSeekMode::Auto;
 
     System()
     {
@@ -674,6 +680,27 @@ public:
         DEBUG_LOG("Toggle Traffic Announcements\n");
     }
 
+    void toggleSeekMode()
+    {
+        if (systemState != SystemState::On)
+        {
+            return;
+        }
+
+        DEBUG_LOG("Seek Mode Toggle\n");
+
+        switch(AudioSource::Radio)
+        {
+            case AudioSource::Radio:
+                if(seekMode == RadioSeekMode::Auto)
+                    seekMode = RadioSeekMode::Manual;
+                else
+                    seekMode = RadioSeekMode::Auto;
+                updateSystemMode(SystemMode::SeekModeSet);
+                break;
+        }
+    }
+
     void onDownBtn()
     {
         if (systemState != SystemState::On)
@@ -687,7 +714,10 @@ public:
         {
         case AudioSource::Radio:
 #ifdef RADIO_ENABLED
-            radio.seekDown();
+            if(seekMode == RadioSeekMode::Auto)
+                radio.seekDown();
+            else
+                radio.setFrequency(radio.getFrequency()-10);
 #endif
             isCurrentStationSaved = false;
             updateSystemMode(SystemMode::Idle);
@@ -708,7 +738,10 @@ public:
         {
         case AudioSource::Radio:
 #ifdef RADIO_ENABLED
-            radio.seekUp();
+            if(seekMode == RadioSeekMode::Auto)
+                radio.seekUp();
+            else
+                radio.setFrequency(radio.getFrequency()+10);
 #endif
             isCurrentStationSaved = false;
             updateSystemMode(SystemMode::Idle);
@@ -761,6 +794,16 @@ public:
     }
 
     void findBestStations()
+    {
+        if (systemState != SystemState::On)
+        {
+            return;
+        }
+
+        DEBUG_LOG("BST\n");
+    }
+
+    void switchToAutomaticStationsBand()
     {
         if (systemState != SystemState::On)
         {
