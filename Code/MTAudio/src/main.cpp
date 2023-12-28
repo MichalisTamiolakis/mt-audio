@@ -14,22 +14,22 @@
 #define BTN_B4 26
 
 // Multiplexed button codes
-#define VOLUME_INCREASE 0x12
-#define VOLUME_DECREASE 0x18
-#define BAS_BAL 0x2
-#define TRE_FAD 0x10
-#define BST_LDN 0xC
-#define TA 0x9
-#define DOWN 0x5
-#define UP 0x14
-#define BND_MAN 0x4
-#define AST 0x7
-#define N1 0x11
-#define N2 0xA
-#define N3 0x6
-#define N4 0x3
-#define N5 0x8
-#define N6 0x1
+#define VOLUME_INCREASE 0b10010
+#define VOLUME_DECREASE 0b11000
+#define BAS_BAL         0b00010
+#define TRE_FAD         0b10000
+#define BST_LDN         0b01100
+#define TA              0b01001
+#define DOWN            0b00101
+#define UP              0b10100
+#define BND_MAN         0b00100
+#define AST             0b00111
+#define N1              0b10001
+#define N2              0b01010
+#define N3              0b00110
+#define N4              0b00011
+#define N5              0b01000
+#define N6              0b00001
 
 // Ignition Sensing pin
 #define S_IGNITION 32
