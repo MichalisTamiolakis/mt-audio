@@ -76,6 +76,8 @@
 #define FADER_DISPLAY_TIME 2000
 #define LOUDNESS_DISPLAY_TIME 2000
 #define SEEK_MODE_DISPLAY_TIME 2000
+#define FULL_DATETIME_DISPLAY_TIME 5000
+#define DATETIME_SET_DISPLAY_TIME 10000
 
 class System
 {
@@ -83,7 +85,7 @@ private:
     // Display
     DisplayManager *display;
 
-// Radio
+    // Radio
     SI4703 radio = SI4703();
 // static RDSParser *rdsParser;
 #ifdef RADIO_ENABLED
@@ -108,6 +110,9 @@ private:
     bool hasDelayStarted = false;
     SystemMode delayMode; // Mode to switch to after delay
 
+    // Async Updates for Temp/Time/Brightness
+    AsyncDelayHelper *timeUpdateDelay;
+
     bool ignitionState;
 
     // Radio specific data
@@ -130,8 +135,8 @@ private:
         // radio._wireDebug(true);
 
         // // Set FM Options for Europe
-        radio.setup(RADIO_FMSPACING, RADIO_FMSPACING_100);   // for EUROPE
-        radio.setup(RADIO_DEEMPHASIS, RADIO_DEEMPHASIS_50);  // for EUROPE
+        radio.setup(RADIO_FMSPACING, RADIO_FMSPACING_100);  // for EUROPE
+        radio.setup(RADIO_DEEMPHASIS, RADIO_DEEMPHASIS_50); // for EUROPE
 
         // // Initialize the Radio
         radio.initWire(Wire);
@@ -249,7 +254,9 @@ private:
 
     void updateSystemMode(SystemMode newMode)
     {
+        SystemMode prevMode = systemMode;
         systemMode = newMode;
+        DateTime now;
 
         // Do delayed transition stuff here.
         stopDelayedModeTransition();
@@ -283,10 +290,11 @@ private:
                     display->sdDisplay();
                     break;
                 }
+                updateDateTime();
             }
             else if (systemState == SystemState::Standby)
             {
-                display->standbyDisplay(14, 11, 2023, 10, 0, 25.0f, 5.0f);
+                updateDateTime();
             }
             break;
 
@@ -331,6 +339,43 @@ private:
             startDelayedModeTransition(SystemMode::Idle, SEEK_MODE_DISPLAY_TIME);
             display->seekModeDisplay(seekMode);
             break;
+        case SystemMode::ShowFullDateTime:
+            now = rtc->now();
+            startDelayedModeTransition(SystemMode::Idle, FULL_DATETIME_DISPLAY_TIME);
+            display->fullDateTimeDisplay(now.year(), now.month(), now.day(), now.dayOfTheWeek(), now.hour(), now.minute(), now.second());
+            break;
+
+        // Date Time Set
+        case SystemMode::DateSet:
+            startDelayedModeTransition(SystemMode::Idle, DATETIME_SET_DISPLAY_TIME);
+            now = rtc->now();
+            display->dateSetDisplay(now.year(), now.month(), now.day(), now.hour(), now.minute(), now.second(), prevMode != newMode);
+            timeUpdateDelay->restartDelay();
+            break;
+        case SystemMode::MonthSet:
+            startDelayedModeTransition(SystemMode::Idle, DATETIME_SET_DISPLAY_TIME);
+            now = rtc->now();
+            display->monthSetDisplay(now.year(), now.month(), now.day(), now.hour(), now.minute(), now.second(), prevMode != newMode);
+            timeUpdateDelay->restartDelay();
+            break;
+        case SystemMode::YearSet:
+            startDelayedModeTransition(SystemMode::Idle, DATETIME_SET_DISPLAY_TIME);
+            now = rtc->now();
+            display->yearSetDisplay(now.year(), now.month(), now.day(), now.hour(), now.minute(), now.second(), prevMode != newMode);
+            timeUpdateDelay->restartDelay();
+            break;
+        case SystemMode::HourSet:
+            startDelayedModeTransition(SystemMode::Idle, DATETIME_SET_DISPLAY_TIME);
+            now = rtc->now();
+            display->hourSetDisplay(now.year(), now.month(), now.day(), now.hour(), now.minute(), now.second(), prevMode != newMode);
+            timeUpdateDelay->restartDelay();
+            break;
+        case SystemMode::MinuteSet:
+            startDelayedModeTransition(SystemMode::Idle, DATETIME_SET_DISPLAY_TIME);
+            now = rtc->now();
+            display->minuteSetDisplay(now.year(), now.month(), now.day(), now.hour(), now.minute(), now.second(), prevMode != newMode);
+            timeUpdateDelay->restartDelay();
+            break;
         }
 
         DEBUG_LOG("[M]: %d\n", (int)newMode);
@@ -352,25 +397,69 @@ private:
         hasDelayStarted = false;
     }
 
+    void updateDateTime()
+    {
+        DateTime now = rtc->now();
+        switch (systemState)
+        {
+        case SystemState::On:
+            switch(systemMode)
+            {
+                case SystemMode::ShowFullDateTime:
+                    display->fullDateTimeDisplay(now.year(), now.month(), now.day(), now.dayOfTheWeek(), now.hour(), now.minute(), now.second());
+                    break;
+                case SystemMode::Idle:
+                    display->updateTimeDisplay(now.hour(), now.minute(), now.second());
+                    break;
+            }
+            break;
+        case SystemState::Standby:
+            switch (systemMode)
+            {
+            case SystemMode::Idle:
+                display->standbyDisplay(now.year(), now.month(), now.day(), now.hour(), now.minute(), now.second(), rtc->getTemperature(), 25.0f);
+                break;
+            case SystemMode::DateSet:
+                display->dateSetDisplay(now.year(), now.month(), now.day(), now.hour(), now.minute(), now.second(), now.second() % 2 == 0);
+                break;
+            case SystemMode::MonthSet:
+                display->monthSetDisplay(now.year(), now.month(), now.day(), now.hour(), now.minute(), now.second(), now.second() % 2 == 0);
+                break;
+            case SystemMode::YearSet:
+                display->yearSetDisplay(now.year(), now.month(), now.day(), now.hour(), now.minute(), now.second(), now.second() % 2 == 0);
+                break;
+            case SystemMode::HourSet:
+                display->hourSetDisplay(now.year(), now.month(), now.day(), now.hour(), now.minute(), now.second(), now.second() % 2 == 0);
+                break;
+            case SystemMode::MinuteSet:
+                display->minuteSetDisplay(now.year(), now.month(), now.day(), now.hour(), now.minute(), now.second(), now.second() % 2 == 0);
+                break;
+            }
+            break;
+        default:
+            break;
+        }
+    }
+
     void storeRadioStation(uint8_t slot)
     {
 #ifdef RADIO_ENABLED
-            savedStations[(int)band][slot] = radio.getFrequency();
+        savedStations[(int)band][slot] = radio.getFrequency();
 #endif
-            isCurrentStationSaved = true;
-            currentSavedStationBand = band;
-            tda->mute(true);
-            delay(SAVE_STATION_PAUSE);
-            tda->mute(false);
+        isCurrentStationSaved = true;
+        currentSavedStationBand = band;
+        tda->mute(true);
+        delay(SAVE_STATION_PAUSE);
+        tda->mute(false);
     }
 
     void tuneToSavedRadioStation(uint8_t slot)
     {
 #ifdef RADIO_ENABLED
-            radio.setFrequency(savedStations[(int)band][slot]);
+        radio.setFrequency(savedStations[(int)band][slot]);
 #endif
-            isCurrentStationSaved = true;
-            currentSavedStationBand = band;
+        isCurrentStationSaved = true;
+        currentSavedStationBand = band;
     }
 
 public:
@@ -396,12 +485,14 @@ public:
         hasDelayStarted = false;
         delayMode = SystemMode::Idle;
 
+        timeUpdateDelay = new AsyncDelayHelper();
+
         // Radio
         // this.rdsParser = rdsParser;
 
         // TDA7313
         tda = new Tda7313(TDA_ADDRESS);
-        
+
         // BT201
         bt201 = new BT201(&Serial2);
 
@@ -420,9 +511,9 @@ public:
     /// @brief Should be called in init, to initialize the buttons, display, etc.
     void init()
     {
-        #ifdef DEBUG_LOG_ENABLED
+#ifdef DEBUG_LOG_ENABLED
         Serial.begin(115200);
-        #endif
+#endif
         DEBUG_LOG("System initializing...\n");
 
         // Output
@@ -441,7 +532,7 @@ public:
 
         delay(200);
         DEBUG_LOG("System initializing... Setting up display\n");
-        display = new DisplayManager(LCD_ADDRESS, BTN_BACKLIGHT);
+        display = new DisplayManager(LCD_ADDRESS, SCREEN_BACKLIGHT);
 
         delay(200);
         DEBUG_LOG("System initializing... Setting up EQ\n");
@@ -455,6 +546,9 @@ public:
         DEBUG_LOG("System initializing... Setting Serial2 communication\n");
         Serial2.begin(115200, SERIAL_8N1, RXD2, TXD2);
 
+        // Start delay helpers
+        timeUpdateDelay->startDelay(1000);
+
         DEBUG_LOG("System initialized\n");
     }
 
@@ -467,10 +561,21 @@ public:
 
         // Delay check
         delayHelper->loop();
-        if (hasDelayStarted && delayHelper->isDelayFinished())
+        if (hasDelayStarted && delayHelper->hasDelayFinished())
         {
             hasDelayStarted = false;
             updateSystemMode(delayMode);
+        }
+
+        // Async Updates for Time/Temp/Brightness (Only while system is on or idle)
+        if (systemState != SystemState::Off)
+        {
+            timeUpdateDelay->loop();
+            if (timeUpdateDelay->hasDelayFinisedThisLoop())
+            {
+                updateDateTime();
+                timeUpdateDelay->restartDelay();
+            }
         }
     }
 
@@ -539,14 +644,131 @@ public:
         }
     }
 
-    void onClockSetBtn()
+    void displayFullDate()
     {
-        DEBUG_LOG("Clock set button\n");
     }
 
-    void onClockOkBtn()
+    // The clock button
+    void enterClockSetMode()
     {
-        DEBUG_LOG("Clock ok button\n");
+        DEBUG_LOG("Clock set button\n");
+
+        if (systemState != SystemState::Standby)
+        {
+            return;
+        }
+
+        switch (systemMode)
+        {
+        default:
+        case SystemMode::Idle:
+            updateSystemMode(SystemMode::DateSet);
+            break;
+        case SystemMode::DateSet:
+            updateSystemMode(SystemMode::MonthSet);
+            break;
+        case SystemMode::MonthSet:
+            updateSystemMode(SystemMode::YearSet);
+            break;
+        case SystemMode::YearSet:
+            updateSystemMode(SystemMode::HourSet);
+            break;
+        case SystemMode::HourSet:
+            updateSystemMode(SystemMode::MinuteSet);
+            break;
+        case SystemMode::MinuteSet:
+            updateSystemMode(SystemMode::Idle);
+            break;
+        }
+    }
+
+    // The circle button
+    void clockFunction()
+    {
+        DEBUG_LOG("Clock Function button\n");
+
+        uint8_t newHour;
+        uint8_t newMinute;
+        uint16_t newYear;
+        uint8_t newMonth;
+        uint8_t newDay;
+        DateTime newDt;
+
+        switch (systemState)
+        {
+        case SystemState::Off:
+            break;
+        case SystemState::On:
+            updateSystemMode(SystemMode::ShowFullDateTime);
+            break;
+        case SystemState::Standby:
+            DateTime now = rtc->now();
+            switch (systemMode)
+            {
+            case SystemMode::Idle:
+                // TODO: change temperature Mode
+                break;
+            case SystemMode::MinuteSet:
+                newMinute = now.minute() < 59 ? now.minute() + 1 : 0;
+                rtc->adjust(DateTime(now.year(), now.month(), now.day(), now.hour(), newMinute, 0));
+                updateSystemMode(SystemMode::MinuteSet);
+                break;
+            case SystemMode::HourSet:
+                newHour = now.hour() < 23 ? now.hour() + 1 : 0;
+                rtc->adjust(DateTime(now.year(), now.month(), now.day(), newHour, now.minute(), 0));
+                updateSystemMode(SystemMode::HourSet);
+                break;
+            case SystemMode::DateSet:
+                newDay = now.day() < 31 ? now.day() + 1 : 1;
+
+                newDt = DateTime(now.year(), now.month(), newDay, now.hour(), now.minute(), 0);
+                if (!newDt.isValid())
+                {
+                    newDt = DateTime(now.year(), now.month(), 1, now.hour(), now.minute(), 0);
+                }
+
+                rtc->adjust(newDt);
+                updateSystemMode(SystemMode::DateSet);
+                break;
+            case SystemMode::MonthSet:
+                newMonth = now.month() < 12 ? now.month() + 1 : 1;
+                newDay = now.day();
+
+                newDt = DateTime(now.year(), newMonth, newDay, now.hour(), now.minute(), 0);
+
+                // If not valid then the days available in this month may not be the same as the previous month, so find a valid date
+                while (!newDt.isValid())
+                {
+                    if (newDay == 1)
+                        break;
+
+                    newDt = DateTime(now.year(), newMonth, --newDay, now.hour(), now.minute(), 0);
+                }
+
+                rtc->adjust(newDt);
+                updateSystemMode(SystemMode::MonthSet);
+                break;
+            case SystemMode::YearSet:
+                newYear = now.year() < 2050 ? now.year() + 1 : 2001;
+                newDay = now.day();
+
+                // If not valid then the days available in this month may not be the same as the previous month, so find a valid date
+                while (!newDt.isValid())
+                {
+                    if (newDay == 1)
+                        break;
+
+                    newDt = DateTime(now.year(), now.month(), --newDay, now.hour(), now.minute(), 0);
+                }
+
+                rtc->adjust(DateTime(now.year() + 1, now.month(), now.day(), now.hour(), now.minute(), 0));
+                updateSystemMode(SystemMode::YearSet);
+                break;
+            default:
+                break;
+            }
+            break;
+        }
     }
 
     void increaseVolume()
@@ -584,20 +806,20 @@ public:
 
         DEBUG_LOG("Volume decrease\n");
 
-        switch(systemMode)
+        switch (systemMode)
         {
-            case SystemMode::Treble:
-                tda->treble(tda->treble() - 1);
-                updateSystemMode(SystemMode::Treble);
-                break;
-            case SystemMode::Bass:
-                tda->bass(tda->bass() - 1);
-                updateSystemMode(SystemMode::Bass);
-                break;
-            default:
-                tda->volume(tda->volume() - 1);
-                updateSystemMode(SystemMode::Volume);
-                break;
+        case SystemMode::Treble:
+            tda->treble(tda->treble() - 1);
+            updateSystemMode(SystemMode::Treble);
+            break;
+        case SystemMode::Bass:
+            tda->bass(tda->bass() - 1);
+            updateSystemMode(SystemMode::Bass);
+            break;
+        default:
+            tda->volume(tda->volume() - 1);
+            updateSystemMode(SystemMode::Volume);
+            break;
         }
     }
 
@@ -689,15 +911,15 @@ public:
 
         DEBUG_LOG("Seek Mode Toggle\n");
 
-        switch(AudioSource::Radio)
+        switch (AudioSource::Radio)
         {
-            case AudioSource::Radio:
-                if(seekMode == RadioSeekMode::Auto)
-                    seekMode = RadioSeekMode::Manual;
-                else
-                    seekMode = RadioSeekMode::Auto;
-                updateSystemMode(SystemMode::SeekModeSet);
-                break;
+        case AudioSource::Radio:
+            if (seekMode == RadioSeekMode::Auto)
+                seekMode = RadioSeekMode::Manual;
+            else
+                seekMode = RadioSeekMode::Auto;
+            updateSystemMode(SystemMode::SeekModeSet);
+            break;
         }
     }
 
@@ -714,10 +936,10 @@ public:
         {
         case AudioSource::Radio:
 #ifdef RADIO_ENABLED
-            if(seekMode == RadioSeekMode::Auto)
+            if (seekMode == RadioSeekMode::Auto)
                 radio.seekDown();
             else
-                radio.setFrequency(radio.getFrequency()-10);
+                radio.setFrequency(radio.getFrequency() - 10);
 #endif
             isCurrentStationSaved = false;
             updateSystemMode(SystemMode::Idle);
@@ -738,10 +960,10 @@ public:
         {
         case AudioSource::Radio:
 #ifdef RADIO_ENABLED
-            if(seekMode == RadioSeekMode::Auto)
+            if (seekMode == RadioSeekMode::Auto)
                 radio.seekUp();
             else
-                radio.setFrequency(radio.getFrequency()+10);
+                radio.setFrequency(radio.getFrequency() + 10);
 #endif
             isCurrentStationSaved = false;
             updateSystemMode(SystemMode::Idle);

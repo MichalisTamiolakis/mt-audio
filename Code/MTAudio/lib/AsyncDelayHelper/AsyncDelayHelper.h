@@ -7,7 +7,9 @@ class AsyncDelayHelper{
         
         void startDelay(unsigned long delay); // Add delayed call. If previous already exists it will be stopped.
         void stopDelay(); // Force stop delayed call
-        bool isDelayFinished(); // Check if delayed call is finished
+        void restartDelay(); // Restart delayed call
+        bool hasDelayFinished(); // Check if delayed call is finished
+        bool hasDelayFinisedThisLoop(); // Check if delayed call is finished during the last loop.
 
         void loop(); // Call every tick to check for pending calls
 
@@ -15,6 +17,7 @@ class AsyncDelayHelper{
         unsigned long delay;
         unsigned long startTimestamp;
         bool delayFinished = false;
+        bool delayFinisedThisTick = false;
 
 };
 #endif

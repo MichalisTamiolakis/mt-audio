@@ -39,7 +39,7 @@ System radioSystem = System();
 // All the buttons
 SingleButton *powerBtn;
 SingleButton *clockSetBtn;
-SingleButton *clockOkBtn;
+SingleButton *clockFuncBtn;
 MultiplexedButton *volumeUpBtn;
 MultiplexedButton *volumeDownBtn;
 MultiplexedButton *basBalBtn;
@@ -78,12 +78,17 @@ void togglePower()
 
 void onClockSetBtn()
 {
-    radioSystem.onClockSetBtn();
+    radioSystem.enterClockSetMode();
 }
 
-void onClockOkBtn()
+void onDisplayFullDateButton()
 {
-    radioSystem.onClockOkBtn();
+    radioSystem.displayFullDate();
+}
+
+void onClockFuncBtn()
+{
+    radioSystem.clockFunction();
 }
 
 void increaseVolume()
@@ -217,11 +222,12 @@ void initButtons()
     powerBtn = new SingleButton(BUTTON_SINGLE, PWR_BTN, 50, 300);
     powerBtn->onPress(togglePower);
 
-    clockSetBtn = new SingleButton(BUTTON_SINGLE, CLK_BTN_SET, 50, 300);
-    clockSetBtn->onPress(onClockSetBtn);
+    clockSetBtn = new SingleButton(BUTTON_LONG, CLK_BTN_SET, 50, 300);
+    clockSetBtn->onPress(onDisplayFullDateButton);
+    clockSetBtn->onLongPress(onClockSetBtn);
 
-    clockOkBtn = new SingleButton(BUTTON_SINGLE, CLK_BTN_OK, 50, 300);
-    clockOkBtn->onPress(onClockOkBtn);
+    clockFuncBtn = new SingleButton(BUTTON_REPEAT, CLK_BTN_OK, 50, 300);
+    clockFuncBtn->onPress(onClockFuncBtn);
 
     volumeUpBtn = new MultiplexedButton(BUTTON_REPEAT, BTN_B0, BTN_B1, BTN_B2, BTN_B3, BTN_B4, VOLUME_INCREASE, 50, 300);
     volumeUpBtn->onPress(increaseVolume);
@@ -284,7 +290,7 @@ void updateButtons()
 {
     // Update buttons
     powerBtn->loop();
-    clockOkBtn->loop();
+    clockFuncBtn->loop();
     clockSetBtn->loop();
     volumeUpBtn->loop();
     volumeDownBtn->loop();

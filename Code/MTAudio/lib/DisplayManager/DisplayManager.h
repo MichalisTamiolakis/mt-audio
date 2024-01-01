@@ -3,6 +3,7 @@
 
 // #include <System.h>
 #include <LiquidCrystal_I2C.h>
+#include <stdbool.h>
 
 // display functions print static info
 // update functions print dynamic info along with the static printed before with display functions
@@ -18,6 +19,8 @@ public:
         
         this->lcd = new LiquidCrystal_I2C(lcdAddress, 20, 4);
         lcd->init();
+
+        lcd->createChar(0, celsiusIcon);
 
         powerOff();
     }
@@ -41,9 +44,15 @@ public:
         lcd->noBacklight();
     }
 
-    void updateTimeDisplay(float time)
+    void updateTimeDisplay(uint8_t hour, uint8_t minute, uint8_t second)
     {
-        
+        // char time_display[5];
+        // sprintf(time_display, "%02d:%02d", hour, minute);
+        lcd->setCursor(15,0);
+        if(second % 2 == 0)
+            lcd->printf("%02d %02d", hour, minute);
+        else
+            lcd->printf("%02d:%02d", hour, minute);
     }
 
     void updateTemperatureDisplay(float temperature)
@@ -52,23 +61,16 @@ public:
     }
 
     // Main Displays
-    void standbyDisplay(uint8_t date, uint8_t month, uint16_t year, uint8_t hours, uint8_t minutes, float temperatureIn, float temperatureOut)
+    void standbyDisplay(uint16_t year, uint8_t month, uint8_t date, uint8_t hour, uint8_t minute, uint8_t second, float temperatureIn, float temperatureOut)
     {
-        char time_display[5];
-        char date_display[10];
-
-        lcd->clear();
         lcd->setCursor(0,0);
-        sprintf(date_display, "%02d-%02d-20%02d", date, month, year);
-        lcd->print("     "); lcd->print(date_display);
-        sprintf(time_display, "%02d:%02d", hours, minutes);
+        lcd->printf("     %02d.%02d.%04d     ", date, month, year);
         lcd->setCursor(0,1);
-        lcd->print("       "); lcd->print(time_display);
+        lcd->printf("      %02d:%02d:%02d      ", hour, minute, second);
         lcd->setCursor(0,2);
-        lcd->print("       Tin: ");
-        lcd->print(temperatureIn, 1);
+        lcd->printf("       Tin: %02.1f", temperatureIn);
         lcd->setCursor(0,3);
-        lcd->print("       Tout:--      ");
+        lcd->printf("       Tout: %02.1f", temperatureOut);
     }
 
     void fmDisplay(FMBand band, uint16_t frequency, char* stationName)
@@ -144,9 +146,167 @@ public:
     {
         clearLine(0);
         lcd->setCursor(0,1);
-        lcd->print(" MT Audio");
+        lcd->print("      MT Audio      ");
         lcd->setCursor(0, 2);
-        lcd->print("v1.0");
+        lcd->print("     v1.1.0  by     ");
+        lcd->setCursor(0, 3);
+        lcd->print("Michalis Tamiolakis ");
+    }
+
+    void fullDateTimeDisplay(uint16_t year, uint8_t month, uint8_t date, uint8_t dayOfWeek, uint8_t hour, uint8_t minute, uint8_t second)
+    {
+        this->clearLine(0);
+        lcd->setCursor(0, 1);
+        lcd->printf("%s", this->dayOfWeek[dayOfWeek]);
+        lcd->setCursor(0, 2);
+        lcd->printf("     %02d.%02d.%04d     ", date, month, year);
+        lcd->setCursor(0, 3);
+        lcd->printf("      %02d:%02d:%02d      ", hour, minute, second);
+    }
+
+    /// @brief Display the date set screen
+    /// @param date 
+    /// @param month 
+    /// @param year 
+    /// @param hour 
+    /// @param minute 
+    /// @param second 
+    /// @param charsOff Whether the date chars should be turned off or not (used for blinking to show the user which char is being changed)
+    void dateSetDisplay(uint16_t year, uint8_t month, uint8_t date, uint8_t hour, uint8_t minute, uint8_t second, bool charsOff = false)
+    {
+        clearLine(0);
+        lcd->setCursor(0,1);
+        if(charsOff)
+        {
+            lcd->printf("       .%02d.%04d     ", month, year);
+        }
+        else
+        {
+            lcd->printf("     %02d.%02d.%04d     ", date, month, year);
+        }
+        lcd->setCursor(0,2);
+        if(second%2 == 0)
+        {
+            lcd->printf("       %02d:%02d        ", hour, minute);
+        }
+        else
+        {
+            lcd->printf("       %02d %02d        ", hour, minute);
+        }
+        clearLine(3);
+    }
+
+    /// @brief Display the month set screen
+    /// @param date 
+    /// @param month 
+    /// @param year 
+    /// @param hour 
+    /// @param minute 
+    /// @param second 
+    /// @param charsOff Whether the date chars should be turned off or not (used for blinking to show the user which char is being changed)
+    void monthSetDisplay(uint16_t year, uint8_t month, uint8_t date, uint8_t hour, uint8_t minute, uint8_t second, bool charsOff = false)
+    {
+        clearLine(0);
+        lcd->setCursor(0,1);
+        if(charsOff)
+        {
+            lcd->printf("     %02d.  .%04d     ", date, year);
+        }
+        else
+        {
+            lcd->printf("     %02d.%02d.%04d     ", date, month, year);
+        }
+        lcd->setCursor(0,2);
+        if(second%2 == 0)
+        {
+            lcd->printf("       %02d:%02d        ", hour, minute);
+        }
+        else
+        {
+            lcd->printf("       %02d %02d        ", hour, minute);
+        }
+        clearLine(3);
+    }
+
+    /// @brief Display the year set screen
+    /// @param date 
+    /// @param month 
+    /// @param year 
+    /// @param hour 
+    /// @param minute 
+    /// @param second 
+    /// @param charsOff Whether the date chars should be turned off or not (used for blinking to show the user which char is being changed)
+    void yearSetDisplay(uint16_t year, uint8_t month, uint8_t date, uint8_t hour, uint8_t minute, uint8_t second, bool charsOff = false)
+    {
+        clearLine(0);
+        lcd->setCursor(0,1);
+        if(charsOff)
+        {
+            lcd->printf("     %02d.%02d.         ", date, month);
+        }
+        else
+        {
+            lcd->printf("     %02d.%02d.%04d     ", date, month, year);
+        }
+        lcd->setCursor(0,2);
+        if(second%2 == 0)
+        {
+            lcd->printf("       %02d:%02d        ", hour, minute);
+        }
+        else
+        {
+            lcd->printf("       %02d %02d        ", hour, minute);
+        }
+        clearLine(3);
+    }
+
+    /// @brief Display the hour set screen
+    /// @param date 
+    /// @param month 
+    /// @param year 
+    /// @param hour 
+    /// @param minute 
+    /// @param second 
+    /// @param charsOff Whether the date chars should be turned off or not (used for blinking to show the user which char is being changed)
+    void hourSetDisplay(uint16_t year, uint8_t month, uint8_t date, uint8_t hour, uint8_t minute, uint8_t second, bool charsOff = false)
+    {
+        clearLine(0);
+        lcd->setCursor(0,1);
+        lcd->printf("     %02d.%02d.%04d     ", date, month, year);
+        lcd->setCursor(0,2);
+        if (charsOff)
+        {
+            lcd->printf("         :%02d        ", minute);
+        }
+        else
+        {
+            lcd->printf("       %02d:%02d        ", hour, minute);
+        }
+        clearLine(3);
+    }
+
+    /// @brief Display the minute set screen
+    /// @param date 
+    /// @param month 
+    /// @param year 
+    /// @param hour 
+    /// @param minute 
+    /// @param second 
+    /// @param charsOff Whether the date chars should be turned off or not (used for blinking to show the user which char is being changed)
+    void minuteSetDisplay(uint16_t year, uint8_t month, uint8_t date, uint8_t hour, uint8_t minute, uint8_t second, bool charsOff = false)
+    {
+        clearLine(0);
+        lcd->setCursor(0,1);
+        lcd->printf("     %02d.%02d.%04d     ", date, month, year);
+        lcd->setCursor(0,2);
+        if (charsOff)
+        {
+            lcd->printf("       %02d:          ", hour);
+        }
+        else
+        {
+            lcd->printf("       %02d:%02d        ", hour, minute);
+        }
         clearLine(3);
     }
 
@@ -302,6 +462,30 @@ private:
     uint8_t backlightPin;
     uint8_t lcdAddress;    
     LiquidCrystal_I2C* lcd;
+
+    // Day of week
+    char dayOfWeek[7][21] = {
+        "       Sunday       ",
+        "       Monday       ",
+        "       Tuesday      ",
+        "      Wednesday     ",
+        "      Thursday      ",
+        "       Friday       ",
+        "      Saturday      "
+    };
+
+    // Custom Characters
+    byte celsiusIcon[8] = {
+        B11000,
+        B11000,
+        B00111,
+        B01000,
+        B01000,
+        B01000,
+        B01000,
+        B00111
+    };
+
     void clearLine(int lineNo)
     {
         lcd->setCursor(0, lineNo);

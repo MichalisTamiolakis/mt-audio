@@ -26,13 +26,13 @@ enum class SystemMode
     
     Brightness,
     
-    MinutesSet,
-    HoursSet,
-    YearsSet,
-    MonthsSet,
-    DaysSet,
+    MinuteSet,
+    HourSet,
+    YearSet,
+    MonthSet,
+    DateSet,
 
-    ShowDate,
+    ShowFullDateTime,
 };
 
 enum class AudioSource
