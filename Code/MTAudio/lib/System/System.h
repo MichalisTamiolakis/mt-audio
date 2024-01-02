@@ -73,7 +73,7 @@
 #define BASS_DISPLAY_TIME 2000
 #define BALANCE_DISPLAY_TIME 2000
 #define TREBLE_DISPLAY_TIME 2000
-#define FADER_DISPLAY_TIME 2000
+#define FADE_DISPLAY_TIME 2000
 #define LOUDNESS_DISPLAY_TIME 2000
 #define SEEK_MODE_DISPLAY_TIME 2000
 #define FULL_DATETIME_DISPLAY_TIME 5000
@@ -123,6 +123,10 @@ private:
 
     bool isCurrentStationSaved = false;
     FMBand currentSavedStationBand = FMBand::FM1;
+
+    // Bal/Fad
+    int8_t balance = 0;
+    int8_t fade = 0;
 
     void initRadio()
     {
@@ -321,15 +325,15 @@ private:
             break;
         case SystemMode::Balance:
             startDelayedModeTransition(SystemMode::Idle, BALANCE_DISPLAY_TIME);
-            display->balanceDisplay(0);
+            display->balanceDisplay(this->balance);
             break;
         case SystemMode::Treble:
             startDelayedModeTransition(SystemMode::Idle, TREBLE_DISPLAY_TIME);
             display->trebleDisplay(tda->treble());
             break;
-        case SystemMode::Fader:
-            startDelayedModeTransition(SystemMode::Idle, FADER_DISPLAY_TIME);
-            display->faderDisplay(0);
+        case SystemMode::Fade:
+            startDelayedModeTransition(SystemMode::Idle, FADE_DISPLAY_TIME);
+            display->fadeDisplay(this->fade);
             break;
         case SystemMode::Loudness:
             startDelayedModeTransition(SystemMode::Idle, LOUDNESS_DISPLAY_TIME);
@@ -460,6 +464,23 @@ private:
 #endif
         isCurrentStationSaved = true;
         currentSavedStationBand = band;
+    }
+
+    void applyFadeAndBalance()
+    {
+        // Calculate the volume for each speaker
+        uint8_t left = balance < 0 ? abs(balance) : 0;
+        uint8_t right = balance > 0 ? balance : 0;
+
+        uint8_t front = fade < 0 ? abs(fade) : 0;
+        uint8_t rear = fade > 0 ? fade : 0;
+
+        // Apply the volume to each speaker
+        tda->attLF(left + front);
+        tda->attRF(right + front);
+
+        tda->attLR(left + rear);
+        tda->attRR(right + rear);
     }
 
 public:
@@ -779,22 +800,31 @@ public:
         }
         DEBUG_LOG("Volume increase\n");
 
-        switch(systemMode)
+        switch (systemMode)
         {
-            case SystemMode::Treble:
-                tda->treble(tda->treble() + 1);
-                updateSystemMode(SystemMode::Treble);
-                break;
-            case SystemMode::Bass:
-                tda->bass(tda->bass() + 1);
-                updateSystemMode(SystemMode::Bass);
-                break;
-            default:
-                tda->volume(tda->volume() + 1);
-                updateSystemMode(SystemMode::Volume);
-                break;
+        case SystemMode::Treble:
+            tda->treble(tda->treble() + 1);
+            updateSystemMode(SystemMode::Treble);
+            break;
+        case SystemMode::Fade:
+            this->fade = min(this->fade + 1, 6);
+            applyFadeAndBalance();
+            updateSystemMode(SystemMode::Fade);
+            break;
+        case SystemMode::Bass:
+            tda->bass(tda->bass() + 1);
+            updateSystemMode(SystemMode::Bass);
+            break;
+        case SystemMode::Balance:
+            this->balance = min(this->balance + 1, 6);
+            applyFadeAndBalance();
+            updateSystemMode(SystemMode::Balance);
+            break;
+        default:
+            tda->volume(tda->volume() + 1);
+            updateSystemMode(SystemMode::Volume);
+            break;
         }
-        
     }
 
     void decreaseVolume()
@@ -812,9 +842,19 @@ public:
             tda->treble(tda->treble() - 1);
             updateSystemMode(SystemMode::Treble);
             break;
+        case SystemMode::Fade:
+            this->fade = max(this->fade - 1, -6);
+            applyFadeAndBalance();
+            updateSystemMode(SystemMode::Fade);
+            break;
         case SystemMode::Bass:
             tda->bass(tda->bass() - 1);
             updateSystemMode(SystemMode::Bass);
+            break;
+        case SystemMode::Balance:
+            this->balance = max(this->balance - 1, -6);
+            applyFadeAndBalance();
+            updateSystemMode(SystemMode::Balance);
             break;
         default:
             tda->volume(tda->volume() - 1);
@@ -858,9 +898,9 @@ public:
         switch (systemMode)
         {
         case SystemMode::Treble:
-            updateSystemMode(SystemMode::Fader);
+            updateSystemMode(SystemMode::Fade);
             break;
-        case SystemMode::Fader:
+        case SystemMode::Fade:
             updateSystemMode(SystemMode::Treble);
             break;
         default:
@@ -869,14 +909,14 @@ public:
         }
     }
 
-    void toggleBassBoost()
+    void selectBestStationsBand()
     {
         if (systemState != SystemState::On)
         {
             return;
         }
 
-        DEBUG_LOG("Toggle Bass Boost\n");
+        DEBUG_LOG("Best Stations Band\n");
     }
 
     void toggleLoudness()
@@ -886,7 +926,7 @@ public:
             return;
         }
 
-        DEBUG_LOG("Boost/Loudness\n");
+        DEBUG_LOG("Loudness\n");
 
         tda->loud(!tda->loud());
         updateSystemMode(SystemMode::Loudness);

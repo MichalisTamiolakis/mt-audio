@@ -384,24 +384,27 @@ public:
 
     void balanceDisplay(uint8_t balance)
     {
+        uint8_t left = balance < 0 ? abs(balance) : 0;
+        uint8_t right = balance > 0 ? balance : 0;
+
         lcd->setCursor(0,1);
         lcd->print("       BALANCE      ");
         lcd->setCursor(0,2);
-        lcd->print("         ");
-        lcd->print(balance);
-        lcd->print("         ");
+        lcd->printf("        %d  %d        ", left, right);
         clearLine(3);
     }
 
-    void faderDisplay(uint8_t fader)
+    void fadeDisplay(uint8_t fade)
     {
+        uint8_t front = fade < 0 ? abs(fade) : 0;
+        uint8_t rear = fade > 0 ? fade : 0;
+
         lcd->setCursor(0,1);
-        lcd->print("        FADER       ");
+        lcd->print("        FADE        ");
         lcd->setCursor(0,2);
-        lcd->print("         ");
-        lcd->print(fader);
-        lcd->print("         ");
-        clearLine(3);
+        lcd->printf("        %d           ", front);
+        lcd->setCursor(0,3);
+        lcd->printf("        %d           ", rear);
     }
 
     void loudnessDisplay(bool loudness)

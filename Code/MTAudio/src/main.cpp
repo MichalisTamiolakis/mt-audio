@@ -113,7 +113,7 @@ void openTrebleAndFadeSettings()
 
 void toggleBassBoost()
 {
-    radioSystem.toggleBassBoost();
+    radioSystem.selectBestStationsBand();
 }
 
 void toggleLoudness()
