@@ -315,6 +315,9 @@ private:
             startDelayedModeTransition(SystemMode::Idle, SAVE_STATION_DISPLAY_TIME);
             display->saveStationDisplay(isCurrentStationSaved ? currentSavedStationBand : FMBand::FM);
             break;
+        case SystemMode::AutoStoreSearch:
+            display->autoStoreSearchInProgressDisplay();
+            break;
         case SystemMode::InputSelection:
             startDelayedModeTransition(SystemMode::Idle, INPUT_SELECTION_DISPLAY_TIME);
             display->sourceChangeDisplay(audioSource, band);
@@ -464,6 +467,91 @@ private:
 #endif
         isCurrentStationSaved = true;
         currentSavedStationBand = band;
+    }
+
+    void autoStoreBestStations()
+    {
+        // Seeks for the best stations and stores them in the BST band
+        
+
+        uint16_t initialFreq = radio.getFrequency();
+        radio.setMute(true);
+
+        uint16_t bstStations[6] = 
+        {
+            0, 0, 0, 0, 0, 0
+        };
+        uint16_t rssi[6] = 
+        {
+            0, 0, 0, 0, 0, 0
+        };
+
+        RADIO_INFO *info = new RADIO_INFO();
+        // Initialize frequencies & RSSIs
+        for(int i=0; i<6; i++)
+        {
+            bstStations[i] = savedStations[(int)FMBand::FMBst][i];
+            radio.setFrequency(bstStations[i]);
+            delay(10);
+            radio.getRadioInfo(info);
+            if(info->tuned)
+            {
+                rssi[i] = info->rssi;
+            }
+            else
+            {
+                rssi[i] = 0;
+            }
+        }
+
+        radio.setFrequency(radio.getMinFrequency()); // Start from lower end
+        uint16_t previousFreq = radio.getFrequency();
+        uint16_t currentFreq = previousFreq;
+        uint8_t stationsFound = 0;
+        for(int i=0; i<6; i++)
+        {
+            radio.seekUp();
+            currentFreq = radio.getFrequency();
+            if(currentFreq <= previousFreq)
+            {
+                break;
+            }
+
+            // Get RSSI and see if it is bigger than the already saved best stations
+            radio.getRadioInfo(info);
+            if(info->tuned)
+            {
+                stationsFound++;
+                // Find the first slot that has a lower RSSI than the current one
+                for(int j=0; j<6; j++)
+                {
+                    if(rssi[j] < info->rssi)
+                    {
+                        // Move all the slots after this one to the right
+                        for(int k=5; k>j; k--)
+                        {
+                            rssi[k] = rssi[k-1];
+                            bstStations[k] = bstStations[k-1];
+                        }
+
+                        // Add the new station
+                        rssi[j] = info->rssi;
+                        bstStations[j] = currentFreq;
+                        break;
+                    }
+                }
+            }
+
+        }
+
+        // Move bst Stations to saved stations (only if new best stations were found)
+        for(int i=0; i<stationsFound; i++)
+        {
+            savedStations[(int)FMBand::FMBst][i] = bstStations[i];
+        }
+
+        radio.setFrequency(initialFreq);
+        radio.setMute(false);
     }
 
     void applyFadeAndBalance()
@@ -917,6 +1005,11 @@ public:
         }
 
         DEBUG_LOG("Best Stations Band\n");
+        
+        band = FMBand::FMBst;
+        audioSource = AudioSource::Radio;
+        tda->input(AUDIO_IN_RADIO);
+        updateSystemMode(SystemMode::InputSelection);
     }
 
     void toggleLoudness()
@@ -1063,6 +1156,15 @@ public:
         }
 
         DEBUG_LOG("BST\n");
+
+        updateSystemMode(SystemMode::AutoStoreSearch);
+        autoStoreBestStations();
+        band = FMBand::FMBst;
+        audioSource = AudioSource::Radio;
+        tda->input(AUDIO_IN_RADIO);
+        tuneToSavedRadioStation(0);
+        updateSystemMode(SystemMode::InputSelection);
+
     }
 
     void switchToAutomaticStationsBand()

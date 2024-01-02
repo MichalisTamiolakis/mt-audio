@@ -460,6 +460,15 @@ public:
         clearLine(3);
     }
 
+    void autoStoreSearchInProgressDisplay()
+    {
+        lcd->setCursor(0,1);
+        lcd->print("BEST SIGNAL STATIONS");
+        lcd->setCursor(0,2);
+        lcd->print("    SEARCHING...    ");
+        clearLine(3);
+    }
+
 private:
     bool isPoweredOn;
     uint8_t backlightPin;

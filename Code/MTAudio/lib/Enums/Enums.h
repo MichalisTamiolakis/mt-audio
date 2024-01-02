@@ -20,7 +20,7 @@ enum class SystemMode
     Fade,
     Loudness,
 
-    BstLdn,
+    AutoStoreSearch,
     StationSave,
     SeekModeSet,
     
