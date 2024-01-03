@@ -6,6 +6,11 @@
 #include <Enums.h>
 #include <DisplayManager.h>
 
+// LEDc
+#define BCK_LED_FREQUENCY 40000
+#define BCK_LED_CHANNEL 0
+#define BCK_LED_RESOLUTION 8
+
 // Delay helper
 #include <AsyncDelayHelper.h>
 
@@ -199,7 +204,8 @@ private:
         {
         case SystemState::On:
             digitalWrite(PWR_ENABLE, HIGH);
-            analogWrite(BTN_BACKLIGHT, 255);
+            // analogWrite(BTN_BACKLIGHT, 60);
+            ledcAttachPin(BTN_BACKLIGHT, BCK_LED_CHANNEL);
             display->powerOn();
             delay(100);
 
@@ -225,7 +231,9 @@ private:
 
             delay(100);
             digitalWrite(PWR_ENABLE, LOW);
-            analogWrite(BTN_BACKLIGHT, 0);
+            // analogWrite(BTN_BACKLIGHT, 0);
+            ledcDetachPin(BTN_BACKLIGHT);
+            digitalWrite(BTN_BACKLIGHT, LOW);
 
             DEBUG_LOG("System off\n");
 
@@ -240,7 +248,10 @@ private:
 
             delay(100);
             digitalWrite(PWR_ENABLE, LOW);
-            analogWrite(BTN_BACKLIGHT, 0);
+            // analogWrite(BTN_BACKLIGHT, 0);
+            // ledcWrite(BCK_LED_CHANNEL, 0);
+            ledcDetachPin(BTN_BACKLIGHT);
+            digitalWrite(BTN_BACKLIGHT, LOW);
 
             display->powerOn();
             updateSystemMode(SystemMode::Idle);
@@ -633,6 +644,11 @@ public:
         pinMode(S_LIGHT, INPUT_PULLDOWN);
 
         delay(200);
+        DEBUG_LOG("System initializing... Setting up LEDc\n");
+        ledcSetup(BCK_LED_CHANNEL, BCK_LED_FREQUENCY, BCK_LED_RESOLUTION);
+        SetBacklightBrightness(120);
+
+        delay(200);
         DEBUG_LOG("System initializing... Setting up radio\n");
         initRadio();
 
@@ -683,6 +699,11 @@ public:
                 timeUpdateDelay->restartDelay();
             }
         }
+    }
+
+    void SetBacklightBrightness(uint8_t val)
+    {
+        ledcWrite(BCK_LED_CHANNEL, val);
     }
 
     // static void RDSProcess(uint16_t block1, uint16_t block2, uint16_t block3, uint16_t block4)

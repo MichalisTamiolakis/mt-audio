@@ -10,10 +10,11 @@
 
 class DisplayManager{
 public:
-    DisplayManager(uint8_t lcdAddress, uint8_t backlight)
+    DisplayManager(uint8_t lcdAddress, uint8_t backlight, uint8_t pwmChannel = 0)
     {
         this->backlightPin = backlight;
         this->lcdAddress = lcdAddress;
+        this->pwmChannel = pwmChannel;
 
         pinMode(backlight, OUTPUT);
         
@@ -27,7 +28,7 @@ public:
 
     void powerOn()
     {
-        analogWrite(backlightPin, brightness);
+        ledcAttachPin(backlightPin, pwmChannel);
         lcd->display();
         lcd->backlight();
         isPoweredOn = true;
@@ -37,20 +38,12 @@ public:
     {
         this->isPoweredOn = false;
 
-        analogWrite(backlightPin, 0);
+        ledcDetachPin(backlightPin);
+        digitalWrite(backlightPin, LOW);
 
         lcd->clear();
         lcd->noDisplay();
         lcd->noBacklight();
-    }
-
-    void setBrightness(uint8_t value)
-    {
-        this->brightness = value;
-        if(this->isPoweredOn)
-        {
-            analogWrite(backlightPin, this->brightness);
-        }
     }
 
     void updateTimeDisplay(uint8_t hour, uint8_t minute, uint8_t second)
@@ -480,9 +473,9 @@ public:
 
 private:
     bool isPoweredOn;
-    uint8_t brightness = 255;
     uint8_t backlightPin;
-    uint8_t lcdAddress;    
+    uint8_t pwmChannel;
+    uint8_t lcdAddress;
     LiquidCrystal_I2C* lcd;
 
     // Day of week
