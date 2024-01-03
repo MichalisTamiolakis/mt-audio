@@ -480,8 +480,6 @@ private:
     void autoStoreBestStations()
     {
         // Seeks for the best stations and stores them in the BST band
-        
-
         uint16_t initialFreq = radio.getFrequency();
         radio.setMute(true);
 
@@ -502,16 +500,10 @@ private:
             radio.setFrequency(bstStations[i]);
             delay(10);
             radio.getRadioInfo(info);
-            if(info->tuned)
-            {
-                rssi[i] = info->rssi;
-            }
-            else
-            {
-                rssi[i] = 0;
-            }
+            rssi[i] = info->rssi;
         }
 
+        radio.setMute(false);
         radio.setFrequency(radio.getMinFrequency()); // Start from lower end
         uint16_t previousFreq = radio.getFrequency();
         uint16_t currentFreq = previousFreq;
@@ -519,37 +511,39 @@ private:
         for(int i=0; i<6; i++)
         {
             radio.seekUp();
+            delay(50);
+            DEBUG_LOG("Seeking up\n");
             currentFreq = radio.getFrequency();
             if(currentFreq <= previousFreq)
             {
+                DEBUG_LOG("Wrap around\n");
                 break;
             }
 
             // Get RSSI and see if it is bigger than the already saved best stations
             radio.getRadioInfo(info);
-            if(info->tuned)
+            // Find the first slot that has a lower RSSI than the current one
+            for(int j=0; j<6; j++)
             {
-                stationsFound++;
-                // Find the first slot that has a lower RSSI than the current one
-                for(int j=0; j<6; j++)
+                if(rssi[j] < info->rssi)
                 {
-                    if(rssi[j] < info->rssi)
-                    {
-                        // Move all the slots after this one to the right
-                        for(int k=5; k>j; k--)
-                        {
-                            rssi[k] = rssi[k-1];
-                            bstStations[k] = bstStations[k-1];
-                        }
+                    stationsFound++;
+                    DEBUG_LOG("Storing station %u %d\n", currentFreq, stationsFound);
 
-                        // Add the new station
-                        rssi[j] = info->rssi;
-                        bstStations[j] = currentFreq;
-                        break;
+                    // Move all the slots after this one to the right
+                    for(int k=5; k>j; k--)
+                    {
+                        rssi[k] = rssi[k-1];
+                        bstStations[k] = bstStations[k-1];
                     }
+
+                    // Add the new station
+                    rssi[j] = info->rssi;
+                    bstStations[j] = currentFreq;
+                    break;
                 }
             }
-
+            previousFreq = currentFreq;
         }
 
         // Move bst Stations to saved stations (only if new best stations were found)
@@ -572,11 +566,11 @@ private:
         uint8_t rear = fade > 0 ? fade : 0;
 
         // Apply the volume to each speaker
-        tda->attLF(left + front);
-        tda->attRF(right + front);
+        tda->attLF(13- (left + front));
+        tda->attRF(13- (right + front));
 
-        tda->attLR(left + rear);
-        tda->attRR(right + rear);
+        tda->attLR(13-(left + rear));
+        tda->attRR(13-(right + rear));
     }
 
 public:
@@ -1176,10 +1170,10 @@ public:
         DEBUG_LOG("AST\n");
 
         updateSystemMode(SystemMode::AutoStoreSearch);
-        autoStoreBestStations();
+        tda->input(AUDIO_IN_RADIO);
         band = FMBand::FMBst;
         audioSource = AudioSource::Radio;
-        tda->input(AUDIO_IN_RADIO);
+        autoStoreBestStations();
         tuneToSavedRadioStation(0);
         updateSystemMode(SystemMode::InputSelection);
 
