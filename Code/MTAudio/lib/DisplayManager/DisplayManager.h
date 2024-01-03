@@ -382,7 +382,7 @@ public:
         clearLine(3);
     }
 
-    void balanceDisplay(uint8_t balance)
+    void balanceDisplay(int8_t balance)
     {
         uint8_t left = balance < 0 ? abs(balance) : 0;
         uint8_t right = balance > 0 ? balance : 0;
@@ -394,7 +394,7 @@ public:
         clearLine(3);
     }
 
-    void fadeDisplay(uint8_t fade)
+    void fadeDisplay(int8_t fade)
     {
         uint8_t front = fade < 0 ? abs(fade) : 0;
         uint8_t rear = fade > 0 ? fade : 0;
