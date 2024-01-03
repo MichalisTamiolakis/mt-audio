@@ -242,7 +242,7 @@ void initButtons()
     treFadBtn->onPress(openTrebleAndFadeSettings);
 
     bstLdnBtn = new MultiplexedButton(BUTTON_LONG, BTN_B0, BTN_B1, BTN_B2, BTN_B3, BTN_B4, BST_LDN, 50, 300);
-    bstLdnBtn->onPress(findBestStations);
+    bstLdnBtn->onPress(switchToAutomaticStationsBand);
     bstLdnBtn->onLongPress(toggleLoudness);
 
     taBtn = new MultiplexedButton(BUTTON_SINGLE, BTN_B0, BTN_B1, BTN_B2, BTN_B3, BTN_B4, TA, 50, 300);
@@ -259,7 +259,7 @@ void initButtons()
     bandManBtn->onLongPress(toggleSeekMode);
 
     astBtn = new MultiplexedButton(BUTTON_SINGLE, BTN_B0, BTN_B1, BTN_B2, BTN_B3, BTN_B4, AST, 50, 300);
-    astBtn->onPress(switchToAutomaticStationsBand);
+    astBtn->onPress(findBestStations);
 
     n1Btn = new MultiplexedButton(BUTTON_LONG, BTN_B0, BTN_B1, BTN_B2, BTN_B3, BTN_B4, N1, 50, 1000);
     n1Btn->onPress(selectStationN1);

@@ -1155,7 +1155,7 @@ public:
             return;
         }
 
-        DEBUG_LOG("BST\n");
+        DEBUG_LOG("AST\n");
 
         updateSystemMode(SystemMode::AutoStoreSearch);
         autoStoreBestStations();
@@ -1174,7 +1174,12 @@ public:
             return;
         }
 
-        DEBUG_LOG("AST\n");
+        DEBUG_LOG("BST\n");
+
+        band = FMBand::FMBst;
+        audioSource = AudioSource::Radio;
+        tda->input(AUDIO_IN_RADIO);
+        updateSystemMode(SystemMode::InputSelection);
     }
 
     void selectStationN1()
