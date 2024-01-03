@@ -27,7 +27,7 @@ public:
 
     void powerOn()
     {
-        analogWrite(backlightPin, 255);
+        analogWrite(backlightPin, brightness);
         lcd->display();
         lcd->backlight();
         isPoweredOn = true;
@@ -42,6 +42,15 @@ public:
         lcd->clear();
         lcd->noDisplay();
         lcd->noBacklight();
+    }
+
+    void setBrightness(uint8_t value)
+    {
+        this->brightness = value;
+        if(this->isPoweredOn)
+        {
+            analogWrite(backlightPin, this->brightness);
+        }
     }
 
     void updateTimeDisplay(uint8_t hour, uint8_t minute, uint8_t second)
@@ -471,6 +480,7 @@ public:
 
 private:
     bool isPoweredOn;
+    uint8_t brightness = 255;
     uint8_t backlightPin;
     uint8_t lcdAddress;    
     LiquidCrystal_I2C* lcd;
