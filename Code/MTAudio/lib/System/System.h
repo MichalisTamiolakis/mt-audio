@@ -199,10 +199,9 @@ private:
         {
         case SystemState::On:
             digitalWrite(PWR_ENABLE, HIGH);
-            analogWrite(BTN_BACKLIGHT, 120);
-            analogWrite(SCREEN_BACKLIGHT, 120);
-            delay(100);
+            analogWrite(BTN_BACKLIGHT, 255);
             display->powerOn();
+            delay(100);
 
             updateSystemMode(SystemMode::TurnOnSequence);
             delay(100);
@@ -227,7 +226,6 @@ private:
             delay(100);
             digitalWrite(PWR_ENABLE, LOW);
             analogWrite(BTN_BACKLIGHT, 0);
-            analogWrite(SCREEN_BACKLIGHT, 0);
 
             DEBUG_LOG("System off\n");
 
@@ -243,7 +241,6 @@ private:
             delay(100);
             digitalWrite(PWR_ENABLE, LOW);
             analogWrite(BTN_BACKLIGHT, 0);
-            analogWrite(SCREEN_BACKLIGHT, 120);
 
             display->powerOn();
             updateSystemMode(SystemMode::Idle);
