@@ -32,9 +32,8 @@ enum class AudioMode
 class BT201
 {
 public:
-    BT201(HardwareSerial* serial)
+    BT201()
     {
-        this->serial = serial;
         this->commandQueue = new Queue<String>(5);
     }
 
@@ -44,8 +43,9 @@ public:
     }
 
     /// @brief Get state from device and initializes all internal variables
-    void init()
+    void init(HardwareSerial* serial)
     {
+        this->serial = serial;
         getAudioMode(true);
         getBluetoothStatus(true);
         updateOnlineDevices();
@@ -467,7 +467,7 @@ private:
     // Serial Communication helping functions
 
     void readSerialToCommandBuffer()
-    {
+    {        
         while(serial->available())
         {
             String received = serial->readStringUntil('\n');

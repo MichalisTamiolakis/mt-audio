@@ -26,6 +26,13 @@ enum class SystemMode
     
     Brightness,
     
+    // BT201 Info Displays
+    BluetoothConnected,
+    IncomingCallActions,
+    NextSong,
+    PreviousSong,
+
+    // DateTime Displays
     MinuteSet,
     HourSet,
     YearSet,

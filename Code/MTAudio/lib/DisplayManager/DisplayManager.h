@@ -4,6 +4,8 @@
 // #include <System.h>
 #include <LiquidCrystal_I2C.h>
 #include <stdbool.h>
+#include <BT201.h>
+#include <Arduino.h>
 
 // display functions print static info
 // update functions print dynamic info along with the static printed before with display functions
@@ -119,12 +121,48 @@ public:
         clearLine(3);
     }
 
-    void btDisplay()
+    void btDisplay(BluetoothStatus status, String incomingCallNumber = "")
     {
-        clearLine(1);
-        lcd->setCursor(0,2);
-        lcd->print("     BLUETOOTH      ");
-        clearLine(3);
+        
+        switch(status)
+        {
+            case BluetoothStatus::Pairing:
+                lcd->setCursor(0,1);
+                lcd->print("     BLUETOOTH      ");
+                lcd->setCursor(0,2);
+                lcd->print("     Pairing...     ");
+                clearLine(3);
+                break;
+            case BluetoothStatus::MusicPlaying:
+                lcd->setCursor(0,1);
+                lcd->print("     BLUETOOTH      ");
+                lcd->setCursor(0,2);
+                lcd->print("    >  Playing      ");
+                clearLine(3);
+                break;
+            case BluetoothStatus::Connected:
+                lcd->setCursor(0,1);
+                lcd->print("     BLUETOOTH      ");
+                lcd->setCursor(0,2);
+                lcd->print("    || Paused       ");
+                clearLine(3);
+                break;
+            case BluetoothStatus::Phone:
+                lcd->setCursor(0,1);
+                lcd->print("   Incoming call    ");
+                lcd->setCursor(0,2);
+                printCenter(incomingCallNumber.c_str());
+                lcd->setCursor(0,3);
+                lcd->print("[1]Accept [2]Reject");
+                break;
+            case BluetoothStatus::PhoneTalking:
+                lcd->setCursor(0,1);
+                lcd->print("   In call with     ");
+                lcd->setCursor(0,2);
+                printCenter(incomingCallNumber.c_str());
+                clearLine(3);
+                break;
+        }
     }
 
     void usbDisplay()
@@ -356,9 +394,7 @@ public:
         lcd->setCursor(0,1);
         lcd->print("       VOLUME       ");
         lcd->setCursor(0,2);
-        lcd->print("         ");
-        lcd->print(volume);
-        lcd->print("         ");
+        lcd->printf("        %2d          ", volume);
         clearLine(3);
     }
 
@@ -505,6 +541,25 @@ private:
     {
         lcd->setCursor(0, lineNo);
         lcd->print("                    ");
+    }
+
+    void printCenter(const char* text)
+    {
+        size_t len = constrain(strlen(text), 0, 20);
+        size_t margin = (20-len)/2;
+
+        int i;
+        for(i=0; i<margin; i++)
+        {
+            lcd->printf(" ");
+        }
+
+        lcd->printf("%s", text);
+
+        for(i=0; i<margin; i++)
+        {
+            lcd->printf(" ");
+        }
     }
 };
 

@@ -46,7 +46,8 @@
 #define TDA_ADDRESS 0x44
 #define LCD_ADDRESS 0x3F
 
-// Serial 2 pins
+// Serial 2 info
+#define SERIAL2_BAUD 115200
 #define RXD2 16
 #define TXD2 17
 
@@ -194,6 +195,20 @@ private:
         rtc->adjust(dt);
     }
 
+    void shutdownBT201()
+    {
+        Serial2.end();
+    }
+
+    void initBT201()
+    {
+        Serial2.begin(SERIAL2_BAUD, SERIAL_8N1, RXD2, TXD2);
+        delay(200);
+        bt201->init(&Serial2);
+        currentBT201AudioMode = AudioMode::Bluetooth;
+        currentBT201Status = BluetoothStatus::Pairing;
+    }
+
     void updateSystemState(SystemState newState)
     {
         SystemState prevState = systemState;
@@ -213,6 +228,9 @@ private:
             delay(100);
 
             initRadio();
+
+            initBT201();
+
             tda->sync();
 
             DEBUG_LOG("System on\n");
@@ -290,7 +308,7 @@ private:
                     display->fmDisplay(isCurrentStationSaved ? band : FMBand::FM, freq, nullptr);
                     break;
                 case AudioSource::Bluetooth:
-                    display->btDisplay();
+                    display->btDisplay(currentBT201Status, bt201->getCallerPhoneNumber());
                     break;
                 case AudioSource::Aux:
                     display->auxDisplay();
@@ -573,12 +591,55 @@ private:
         tda->attRR(13-(right + rear));
     }
 
+    void BT201AudioModeChanged()
+    {
+        if(systemState != SystemState::On)
+            return;
+
+        // Add logic here to change input if needed.
+
+        switch(systemMode)
+        {
+            case SystemMode::Idle:
+                // Refresh idle screen with new data.
+                updateSystemMode(SystemMode::Idle);
+                break;
+        }
+    }
+
+    void BT201BluetoothStatusChanged()
+    {
+        if(systemState != SystemState::On)
+            return;
+
+        switch(systemMode)
+        {
+            case SystemMode::Idle:
+                // Refresh idle screen with new data.
+                updateSystemMode(SystemMode::Idle);
+                break;
+        }
+    }
+
+    void updateCallerNumber()
+    {
+        // Also update the caller number for bluetooth calls once every second
+        if(currentBT201Status == BluetoothStatus::Phone || currentBT201Status == BluetoothStatus::PhoneTalking && systemMode == SystemMode::Idle)
+        {
+            updateSystemMode(SystemMode::Idle);
+        }
+    }
+
 public:
     SystemState systemState = SystemState::Off;
     SystemMode systemMode = SystemMode::Idle;
     AudioSource audioSource;
     FMBand band = FMBand::FM1;
     RadioSeekMode seekMode = RadioSeekMode::Auto;
+
+    // BT201 related stuff
+    AudioMode currentBT201AudioMode = AudioMode::Bluetooth;
+    BluetoothStatus currentBT201Status = BluetoothStatus::Pairing;
 
     System()
     {
@@ -605,7 +666,7 @@ public:
         tda = new Tda7313(TDA_ADDRESS);
 
         // BT201
-        bt201 = new BT201(&Serial2);
+        bt201 = new BT201();
 
         // DS3231
         rtc = new RTC_DS3231();
@@ -658,9 +719,9 @@ public:
         DEBUG_LOG("System initializing... Setting up RTC\n");
         initRTC();
 
-        delay(200);
-        DEBUG_LOG("System initializing... Setting Serial2 communication\n");
-        Serial2.begin(115200, SERIAL_8N1, RXD2, TXD2);
+        // delay(200);
+        // DEBUG_LOG("System initializing... Setting Serial2 communication\n");
+        // Serial2.begin(115200, SERIAL_8N1, RXD2, TXD2);
 
         // Start delay helpers
         timeUpdateDelay->startDelay(1000);
@@ -674,6 +735,23 @@ public:
 #ifdef RADIO_ENABLED
         // radio.checkRDS();
 #endif
+
+        // Update BT201 state
+        if(systemState == SystemState::On)
+        {
+            bt201->update();
+            if(bt201->getAudioMode() != currentBT201AudioMode)
+            {
+                currentBT201AudioMode = bt201->getAudioMode();
+                BT201AudioModeChanged();
+            }
+
+            if(bt201->getBluetoothStatus() != currentBT201Status)
+            {
+                currentBT201Status = bt201->getBluetoothStatus();
+                BT201BluetoothStatusChanged();
+            }
+        }
 
         // Delay check
         delayHelper->loop();
@@ -690,6 +768,9 @@ public:
             if (timeUpdateDelay->hasDelayFinisedThisLoop())
             {
                 updateDateTime();
+
+                updateCallerNumber();
+
                 timeUpdateDelay->restartDelay();
             }
         }
@@ -1045,6 +1126,15 @@ public:
         }
 
         DEBUG_LOG("Toggle Traffic Announcements\n");
+
+        switch (audioSource)
+        {
+        case AudioSource::Bluetooth:
+        case AudioSource::USB:
+        case AudioSource::SD:
+            bt201->togglePlayPause();
+            break;
+        }
     }
 
     void toggleSeekMode()
@@ -1089,6 +1179,11 @@ public:
             isCurrentStationSaved = false;
             updateSystemMode(SystemMode::Idle);
             break;
+        case AudioSource::Bluetooth:
+        case AudioSource::USB:
+        case AudioSource::SD:
+            bt201->playPreviousSong();
+            break;
         }
     }
 
@@ -1112,6 +1207,11 @@ public:
 #endif
             isCurrentStationSaved = false;
             updateSystemMode(SystemMode::Idle);
+            break;
+        case AudioSource::Bluetooth:
+        case AudioSource::USB:
+        case AudioSource::SD:
+            bt201->playNextSong();
             break;
         }
     }
@@ -1209,6 +1309,12 @@ public:
             tuneToSavedRadioStation(0);
             updateSystemMode(SystemMode::Idle);
             break;
+        case AudioSource::Bluetooth:
+            if(currentBT201Status == BluetoothStatus::Phone)
+            {
+                bt201->phonePickUp();
+            }
+            break;
         }
     }
 
@@ -1242,6 +1348,16 @@ public:
         case AudioSource::Radio:
             tuneToSavedRadioStation(1);
             updateSystemMode(SystemMode::Idle);
+            break;
+        case AudioSource::Bluetooth:
+            if(currentBT201Status == BluetoothStatus::Phone)
+            {
+                bt201->phoneRefuseAccept();
+            }
+            else if(currentBT201Status == BluetoothStatus::PhoneTalking)
+            {
+                bt201->phoneHangUp();
+            }
             break;
         }
     }
