@@ -34,7 +34,7 @@ class BT201
 public:
     BT201()
     {
-        this->commandQueue = new Queue<String>(5);
+        this->commandQueue = new Queue<String>(20);
     }
 
     ~BT201()
