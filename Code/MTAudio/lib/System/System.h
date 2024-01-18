@@ -701,7 +701,7 @@ public:
         delay(200);
         DEBUG_LOG("System initializing... Setting up LEDc\n");
         ledcSetup(BCK_LED_CHANNEL, BCK_LED_FREQUENCY, BCK_LED_RESOLUTION);
-        SetBacklightBrightness(120);
+        setBacklightBrightness(120);
 
         delay(200);
         DEBUG_LOG("System initializing... Setting up radio\n");
@@ -776,9 +776,74 @@ public:
         }
     }
 
-    void SetBacklightBrightness(uint8_t val)
+    void setBacklightBrightness(uint8_t val)
     {
         ledcWrite(BCK_LED_CHANNEL, val);
+    }
+
+    bool setAudioSource(AudioSource audioSource)
+    {
+        switch (audioSource)
+        {
+        case AudioSource::Radio:
+            tda->input(AUDIO_IN_RADIO);
+            this->audioSource = audioSource;
+            updateSystemMode(SystemMode::InputSelection);
+            return true;
+            break;
+
+        case AudioSource::Aux:
+            tda->input(AUDIO_IN_AUX);
+            this->audioSource = audioSource;
+            updateSystemMode(SystemMode::InputSelection);
+            return true;
+            break;
+
+        case AudioSource::Bluetooth:
+
+            if(bt201->setAudioMode(AudioMode::Bluetooth))
+            {
+                tda->input(AUDIO_IN_BT_USB_SD);
+                audioSource = this->audioSource;
+                updateSystemMode(SystemMode::InputSelection);
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+            break;
+        
+        case AudioSource::USB:
+
+            if(bt201->setAudioMode(AudioMode::UDisk))
+            {
+                tda->input(AUDIO_IN_BT_USB_SD);
+                audioSource = this->audioSource;
+                updateSystemMode(SystemMode::InputSelection);
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+            break;
+
+        case AudioSource::TFCard:
+
+            if(bt201->setAudioMode(AudioMode::TFCard))
+            {
+                tda->input(AUDIO_IN_BT_USB_SD);
+                audioSource = this->audioSource;
+                updateSystemMode(SystemMode::InputSelection);
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+            break;
+        }
     }
 
     // static void RDSProcess(uint16_t block1, uint16_t block2, uint16_t block3, uint16_t block4)
@@ -1232,61 +1297,49 @@ public:
             {
             case FMBand::FM1:
                 band = FMBand::FM2;
+                updateSystemMode(SystemMode::InputSelection);
                 break;
             default:
                 band = FMBand::FM1;
-                audioSource = AudioSource::Aux;
-                tda->input(AUDIO_IN_AUX);
+                setAudioSource(AudioSource::Aux);
                 break;
             }
-            updateSystemMode(SystemMode::InputSelection);
             break;
         case AudioSource::Aux:
-            tda->input(AUDIO_IN_BT_USB_SD);
-
-            // Try canging to bluetooth if possible. If not go to the next available mode.
-            audioSource = AudioSource::Bluetooth;
-            if(!bt201->setAudioMode(AudioMode::Bluetooth))
+            
+            // If bluetooth is available, try to change to it. If not go to the next available mode.
+            if(!setAudioSource(AudioSource::Bluetooth))
             {
+                audioSource = AudioSource::Bluetooth; // Force the audio source to be bluetooth so that the next input is USB
                 selectNextInput();
             }
-            else
-            {
-                updateSystemMode(SystemMode::InputSelection);
-            }
+
             break;
         case AudioSource::Bluetooth:
-            tda->input(AUDIO_IN_BT_USB_SD);
-
-            // Try canging to UDisk if possible. If not go to the next available mode.
-            audioSource = AudioSource::USB;
-            if(!bt201->setAudioMode(AudioMode::UDisk))
+            
+            // If USB is available, try to change to it. If not go to the next available mode.
+            if(!setAudioSource(AudioSource::USB))
             {
+                audioSource = AudioSource::USB; // Force the audio source to be USB so that the next input is TFCard
                 selectNextInput();
             }
-            else
-            {
-                updateSystemMode(SystemMode::InputSelection);
-            }
+
             break;
         case AudioSource::USB:
-            tda->input(AUDIO_IN_BT_USB_SD);
-
-            // Try canging to UDisk if possible. If not go to the next available mode.
-            audioSource = AudioSource::TFCard;
-            if(!bt201->setAudioMode(AudioMode::TFCard))
+            
+            // If TFCard is available, try to change to it. If not go to the next available mode.
+            if(!setAudioSource(AudioSource::TFCard))
             {
+                audioSource = AudioSource::TFCard; // Force the audio source to be TFCard so that the next input is Radio
                 selectNextInput();
             }
-            else
-            {
-                updateSystemMode(SystemMode::InputSelection);
-            }
+
             break;
         default:
-            tda->input(AUDIO_IN_RADIO);
-            audioSource = AudioSource::Radio;
-            updateSystemMode(SystemMode::InputSelection);
+            
+            band = FMBand::FM1;
+            setAudioSource(AudioSource::Radio);
+
             break;
         }
     }
