@@ -1,7 +1,6 @@
 #include "SingleButton.h"
 
-SingleButton::SingleButton(uint8_t buttonType, uint8_t pin, uint32_t debounceDelay, uint32_t functionDelay) : 
-    ButtonBase(buttonType, debounceDelay, functionDelay)
+SingleButton::SingleButton(uint8_t buttonType, uint8_t pin, uint32_t debounceDelay, uint32_t functionDelay) : ButtonBase(buttonType, debounceDelay, functionDelay)
 {
     this->pin = pin;
     pinMode(pin, INPUT_PULLDOWN);
@@ -27,7 +26,7 @@ void SingleButton::onLongPress(void (*func)())
 
 void SingleButton::sendPress()
 {
-    if(onPressCb)
+    if (onPressCb)
     {
         onPressCb();
     }
@@ -35,7 +34,7 @@ void SingleButton::sendPress()
 
 void SingleButton::sendLongPress()
 {
-    if(onLongPressCb)
+    if (onLongPressCb)
     {
         onLongPressCb();
     }

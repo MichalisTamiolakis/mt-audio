@@ -38,15 +38,14 @@ bool AsyncDelayHelper::hasDelayFinisedThisLoop()
 
 void AsyncDelayHelper::loop()
 {
-    if(delayFinished)
+    if (delayFinished)
     {
         this->delayFinisedThisTick = false;
         return;
     }
-    else if(!delayFinished && millis() - startTimestamp >= delay)
+    else if (!delayFinished && millis() - startTimestamp >= delay)
     {
         this->delayFinished = true;
         this->delayFinisedThisTick = true;
     }
-
 }

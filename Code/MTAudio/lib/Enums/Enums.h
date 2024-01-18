@@ -23,9 +23,9 @@ enum class SystemMode
     AutoStoreSearch,
     StationSave,
     SeekModeSet,
-    
+
     Brightness,
-    
+
     // BT201 Info Displays
     BluetoothConnected,
     IncomingCallActions,
@@ -44,25 +44,25 @@ enum class SystemMode
 
 enum class AudioSource
 {
-    Radio, // Radio
-    Aux, // Aux
+    Radio,     // Radio
+    Aux,       // Aux
     Bluetooth, // Bluetooth
-    USB, // USB
-    TFCard // SD
+    USB,       // USB
+    TFCard     // SD
 };
 
 enum class RadioSeekMode
 {
-    Auto, // Up and down buttons go to the next good received station
+    Auto,  // Up and down buttons go to the next good received station
     Manual // Up and down buttons go to the next station
 };
 
 enum class FMBand
 {
-    FM = -1, // FM band generic not saved
-    FM1 = 0, // Saved stations in fm1
-    FM2 = 1, // Saved stations in fm2
-    FMBst = 2  // Saved stations after AST search.
+    FM = -1,  // FM band generic not saved
+    FM1 = 0,  // Saved stations in fm1
+    FM2 = 1,  // Saved stations in fm2
+    FMBst = 2 // Saved stations after AST search.
 };
 
 #endif

@@ -177,7 +177,7 @@ public:
     {
         clearLine(1);
         lcd->setCursor(0,2);
-        lcd->print("          SD         ");
+        lcd->print("       SD Card      ");
         clearLine(3);
     }
 
@@ -382,8 +382,8 @@ public:
             case AudioSource::USB:
                 lcd->print("        USB         ");
                 break;
-            case AudioSource::SD:
-                lcd->print("         SD         ");
+            case AudioSource::TFCard:
+                lcd->print("      SD Card       ");
                 break;
         }
         clearLine(3);

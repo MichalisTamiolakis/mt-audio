@@ -436,14 +436,14 @@ private:
         switch (systemState)
         {
         case SystemState::On:
-            switch(systemMode)
+            switch (systemMode)
             {
-                case SystemMode::ShowFullDateTime:
-                    display->fullDateTimeDisplay(now.year(), now.month(), now.day(), now.dayOfTheWeek(), now.hour(), now.minute(), now.second());
-                    break;
-                case SystemMode::Idle:
-                    display->updateTimeDisplay(now.hour(), now.minute(), now.second());
-                    break;
+            case SystemMode::ShowFullDateTime:
+                display->fullDateTimeDisplay(now.year(), now.month(), now.day(), now.dayOfTheWeek(), now.hour(), now.minute(), now.second());
+                break;
+            case SystemMode::Idle:
+                display->updateTimeDisplay(now.hour(), now.minute(), now.second());
+                break;
             }
             break;
         case SystemState::Standby:
@@ -501,18 +501,16 @@ private:
         uint16_t initialFreq = radio.getFrequency();
         radio.setMute(true);
 
-        uint16_t bstStations[6] = 
-        {
-            0, 0, 0, 0, 0, 0
-        };
-        uint16_t rssi[6] = 
-        {
-            0, 0, 0, 0, 0, 0
-        };
+        uint16_t bstStations[6] =
+            {
+                0, 0, 0, 0, 0, 0};
+        uint16_t rssi[6] =
+            {
+                0, 0, 0, 0, 0, 0};
 
         RADIO_INFO *info = new RADIO_INFO();
         // Initialize frequencies & RSSIs
-        for(int i=0; i<6; i++)
+        for (int i = 0; i < 6; i++)
         {
             bstStations[i] = savedStations[(int)FMBand::FMBst][i];
             radio.setFrequency(bstStations[i]);
@@ -526,13 +524,13 @@ private:
         uint16_t previousFreq = radio.getFrequency();
         uint16_t currentFreq = previousFreq;
         uint8_t stationsFound = 0;
-        for(int i=0; i<6; i++)
+        for (int i = 0; i < 6; i++)
         {
             radio.seekUp();
             delay(50);
             DEBUG_LOG("Seeking up\n");
             currentFreq = radio.getFrequency();
-            if(currentFreq <= previousFreq)
+            if (currentFreq <= previousFreq)
             {
                 DEBUG_LOG("Wrap around\n");
                 break;
@@ -541,18 +539,18 @@ private:
             // Get RSSI and see if it is bigger than the already saved best stations
             radio.getRadioInfo(info);
             // Find the first slot that has a lower RSSI than the current one
-            for(int j=0; j<6; j++)
+            for (int j = 0; j < 6; j++)
             {
-                if(rssi[j] < info->rssi)
+                if (rssi[j] < info->rssi)
                 {
                     stationsFound++;
                     DEBUG_LOG("Storing station %u %d\n", currentFreq, stationsFound);
 
                     // Move all the slots after this one to the right
-                    for(int k=5; k>j; k--)
+                    for (int k = 5; k > j; k--)
                     {
-                        rssi[k] = rssi[k-1];
-                        bstStations[k] = bstStations[k-1];
+                        rssi[k] = rssi[k - 1];
+                        bstStations[k] = bstStations[k - 1];
                     }
 
                     // Add the new station
@@ -565,7 +563,7 @@ private:
         }
 
         // Move bst Stations to saved stations (only if new best stations were found)
-        for(int i=0; i<stationsFound; i++)
+        for (int i = 0; i < stationsFound; i++)
         {
             savedStations[(int)FMBand::FMBst][i] = bstStations[i];
         }
@@ -584,47 +582,47 @@ private:
         uint8_t rear = fade > 0 ? fade : 0;
 
         // Apply the volume to each speaker
-        tda->attLF(13- (left + front));
-        tda->attRF(13- (right + front));
+        tda->attLF(13 - (left + front));
+        tda->attRF(13 - (right + front));
 
-        tda->attLR(13-(left + rear));
-        tda->attRR(13-(right + rear));
+        tda->attLR(13 - (left + rear));
+        tda->attRR(13 - (right + rear));
     }
 
     void BT201AudioModeChanged()
     {
-        if(systemState != SystemState::On)
+        if (systemState != SystemState::On)
             return;
 
         // Add logic here to change input if needed.
 
-        switch(systemMode)
+        switch (systemMode)
         {
-            case SystemMode::Idle:
-                // Refresh idle screen with new data.
-                updateSystemMode(SystemMode::Idle);
-                break;
+        case SystemMode::Idle:
+            // Refresh idle screen with new data.
+            updateSystemMode(SystemMode::Idle);
+            break;
         }
     }
 
     void BT201BluetoothStatusChanged()
     {
-        if(systemState != SystemState::On)
+        if (systemState != SystemState::On)
             return;
 
-        switch(systemMode)
+        switch (systemMode)
         {
-            case SystemMode::Idle:
-                // Refresh idle screen with new data.
-                updateSystemMode(SystemMode::Idle);
-                break;
+        case SystemMode::Idle:
+            // Refresh idle screen with new data.
+            updateSystemMode(SystemMode::Idle);
+            break;
         }
     }
 
     void updateCallerNumber()
     {
         // Also update the caller number for bluetooth calls once every second
-        if(currentBT201Status == BluetoothStatus::Phone || currentBT201Status == BluetoothStatus::PhoneTalking && systemMode == SystemMode::Idle)
+        if (currentBT201Status == BluetoothStatus::Phone || currentBT201Status == BluetoothStatus::PhoneTalking && systemMode == SystemMode::Idle)
         {
             updateSystemMode(SystemMode::Idle);
         }
@@ -737,16 +735,16 @@ public:
 #endif
 
         // Update BT201 state
-        if(systemState == SystemState::On)
+        if (systemState == SystemState::On)
         {
             bt201->update();
-            if(bt201->getAudioMode() != currentBT201AudioMode)
+            if (bt201->getAudioMode() != currentBT201AudioMode)
             {
                 currentBT201AudioMode = bt201->getAudioMode();
                 BT201AudioModeChanged();
             }
 
-            if(bt201->getBluetoothStatus() != currentBT201Status)
+            if (bt201->getBluetoothStatus() != currentBT201Status)
             {
                 currentBT201Status = bt201->getBluetoothStatus();
                 BT201BluetoothStatusChanged();
@@ -801,7 +799,7 @@ public:
 
         case AudioSource::Bluetooth:
 
-            if(bt201->setAudioMode(AudioMode::Bluetooth))
+            if (bt201->setAudioMode(AudioMode::Bluetooth))
             {
                 tda->input(AUDIO_IN_BT_USB_SD);
                 audioSource = this->audioSource;
@@ -813,10 +811,10 @@ public:
                 return false;
             }
             break;
-        
+
         case AudioSource::USB:
 
-            if(bt201->setAudioMode(AudioMode::UDisk))
+            if (bt201->setAudioMode(AudioMode::UDisk))
             {
                 tda->input(AUDIO_IN_BT_USB_SD);
                 audioSource = this->audioSource;
@@ -831,7 +829,7 @@ public:
 
         case AudioSource::TFCard:
 
-            if(bt201->setAudioMode(AudioMode::TFCard))
+            if (bt201->setAudioMode(AudioMode::TFCard))
             {
                 tda->input(AUDIO_IN_BT_USB_SD);
                 audioSource = this->audioSource;
@@ -1163,7 +1161,7 @@ public:
         }
 
         DEBUG_LOG("Best Stations Band\n");
-        
+
         band = FMBand::FMBst;
         audioSource = AudioSource::Radio;
         tda->input(AUDIO_IN_RADIO);
@@ -1306,9 +1304,9 @@ public:
             }
             break;
         case AudioSource::Aux:
-            
+
             // If bluetooth is available, try to change to it. If not go to the next available mode.
-            if(!setAudioSource(AudioSource::Bluetooth))
+            if (!setAudioSource(AudioSource::Bluetooth))
             {
                 audioSource = AudioSource::Bluetooth; // Force the audio source to be bluetooth so that the next input is USB
                 selectNextInput();
@@ -1316,9 +1314,9 @@ public:
 
             break;
         case AudioSource::Bluetooth:
-            
+
             // If USB is available, try to change to it. If not go to the next available mode.
-            if(!setAudioSource(AudioSource::USB))
+            if (!setAudioSource(AudioSource::USB))
             {
                 audioSource = AudioSource::USB; // Force the audio source to be USB so that the next input is TFCard
                 selectNextInput();
@@ -1326,9 +1324,9 @@ public:
 
             break;
         case AudioSource::USB:
-            
+
             // If TFCard is available, try to change to it. If not go to the next available mode.
-            if(!setAudioSource(AudioSource::TFCard))
+            if (!setAudioSource(AudioSource::TFCard))
             {
                 audioSource = AudioSource::TFCard; // Force the audio source to be TFCard so that the next input is Radio
                 selectNextInput();
@@ -1336,7 +1334,7 @@ public:
 
             break;
         default:
-            
+
             band = FMBand::FM1;
             setAudioSource(AudioSource::Radio);
 
@@ -1360,7 +1358,6 @@ public:
         autoStoreBestStations();
         tuneToSavedRadioStation(0);
         updateSystemMode(SystemMode::InputSelection);
-
     }
 
     void switchToAutomaticStationsBand()
@@ -1394,7 +1391,7 @@ public:
             updateSystemMode(SystemMode::Idle);
             break;
         case AudioSource::Bluetooth:
-            if(currentBT201Status == BluetoothStatus::Phone)
+            if (currentBT201Status == BluetoothStatus::Phone)
             {
                 bt201->phonePickUp();
             }
@@ -1434,11 +1431,11 @@ public:
             updateSystemMode(SystemMode::Idle);
             break;
         case AudioSource::Bluetooth:
-            if(currentBT201Status == BluetoothStatus::Phone)
+            if (currentBT201Status == BluetoothStatus::Phone)
             {
                 bt201->phoneRefuseAccept();
             }
-            else if(currentBT201Status == BluetoothStatus::PhoneTalking)
+            else if (currentBT201Status == BluetoothStatus::PhoneTalking)
             {
                 bt201->phoneHangUp();
             }

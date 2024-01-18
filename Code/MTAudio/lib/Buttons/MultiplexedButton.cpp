@@ -22,7 +22,7 @@ MultiplexedButton::MultiplexedButton(uint8_t buttonType, uint8_t pin0, uint8_t p
 
 void MultiplexedButton::loop()
 {
-    if(getCurrentButtonCode() == this->buttonCode)
+    if (getCurrentButtonCode() == this->buttonCode)
     {
         ButtonBase::press();
     }
@@ -37,9 +37,9 @@ void MultiplexedButton::loop()
 uint8_t MultiplexedButton::getCurrentButtonCode()
 {
     byte val = 0x0;
-    for(int i=0; i<5; i++)
+    for (int i = 0; i < 5; i++)
     {
-        if(digitalRead(this->pins[i]) == HIGH)
+        if (digitalRead(this->pins[i]) == HIGH)
             val |= (0x1 << i);
     }
 
@@ -58,7 +58,7 @@ void MultiplexedButton::onLongPress(void (*func)())
 
 void MultiplexedButton::sendPress()
 {
-    if(onPressCb)
+    if (onPressCb)
     {
         onPressCb();
     }
@@ -66,7 +66,7 @@ void MultiplexedButton::sendPress()
 
 void MultiplexedButton::sendLongPress()
 {
-    if(onLongPressCb)
+    if (onLongPressCb)
     {
         onLongPressCb();
     }

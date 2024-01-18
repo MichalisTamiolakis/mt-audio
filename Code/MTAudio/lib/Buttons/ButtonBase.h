@@ -3,7 +3,7 @@
 #include <Arduino.h>
 
 #define BUTTON_SINGLE 0U // Button with single press
-#define BUTTON_LONG 1U // Button with single press and long press
+#define BUTTON_LONG 1U   // Button with single press and long press
 #define BUTTON_REPEAT 2U // Button with single press and repeated press
 
 class ButtonBase

@@ -25,9 +25,9 @@ void ButtonBase::updateState(bool newState)
 void ButtonBase::loop()
 {
     uint32_t currentTime = millis();
-    
+
     // State changed
-    if(previousState!=state)
+    if (previousState != state)
     {
         stateChangeTimestamp = currentTime;
     }
@@ -38,57 +38,57 @@ void ButtonBase::loop()
     {
         previousDebouncedState = debouncedState;
         debouncedState = state;
-    
+
         // Pressed at this moment
         if (debouncedState && !previousDebouncedState)
         {
             switch (this->buttonType)
             {
-                case BUTTON_REPEAT:
-                case BUTTON_SINGLE:
-                    sendPress();
-                    break;
-                case BUTTON_LONG:
-                    longPressSent = false;
-                    break;
+            case BUTTON_REPEAT:
+            case BUTTON_SINGLE:
+                sendPress();
+                break;
+            case BUTTON_LONG:
+                longPressSent = false;
+                break;
             }
 
             pressedTime = currentTime;
         }
 
         // Released at this moment
-        else if(!debouncedState && previousDebouncedState)
+        else if (!debouncedState && previousDebouncedState)
         {
             switch (this->buttonType)
             {
-                // Check if should send the single press event
-                case BUTTON_LONG:
-                    if(currentTime - pressedTime < longPressDelay)
-                    {
-                        sendPress();
-                    }
-                    break;
+            // Check if should send the single press event
+            case BUTTON_LONG:
+                if (currentTime - pressedTime < longPressDelay)
+                {
+                    sendPress();
+                }
+                break;
             }
         }
 
-        if(debouncedState)
+        if (debouncedState)
         {
             switch (this->buttonType)
             {
-                case BUTTON_REPEAT:
-                    if(currentTime - pressedTime >= longPressDelay)
-                    {
-                        sendPress();
-                        pressedTime = currentTime;
-                    }
-                    break;
-                case BUTTON_LONG:
-                    if(currentTime - pressedTime >= longPressDelay && !longPressSent)
-                    {
-                        longPressSent = true;
-                        sendLongPress();
-                    }
-                    break;
+            case BUTTON_REPEAT:
+                if (currentTime - pressedTime >= longPressDelay)
+                {
+                    sendPress();
+                    pressedTime = currentTime;
+                }
+                break;
+            case BUTTON_LONG:
+                if (currentTime - pressedTime >= longPressDelay && !longPressSent)
+                {
+                    longPressSent = true;
+                    sendLongPress();
+                }
+                break;
             }
         }
     }

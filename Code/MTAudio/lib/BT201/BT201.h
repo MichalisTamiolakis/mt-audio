@@ -43,7 +43,7 @@ public:
     }
 
     /// @brief Get state from device and initializes all internal variables
-    void init(HardwareSerial* serial)
+    void init(HardwareSerial *serial)
     {
         this->serial = serial;
         getAudioMode(true);
@@ -65,13 +65,12 @@ public:
     bool setVolume(uint8_t volume)
     {
 
-
         volume = constrain(volume, 0, 30);
         DEBUG_PRINT("Sending Command: AT+CA%02u\r\n", volume);
         this->serial->printf("AT+CA%02u\r\n", volume);
 
         // Wait for response
-        if(waitUntilACKReceived(500))
+        if (waitUntilACKReceived(500))
         {
             DEBUG_PRINT("Response is OK\n");
             return true;
@@ -84,9 +83,9 @@ public:
     {
         DEBUG_PRINT("Sending Command: AT+CE\r\n");
         this->serial->printf("AT+CE\r\n");
-        
+
         // Wait for response
-        if(waitUntilACKReceived(500))
+        if (waitUntilACKReceived(500))
         {
             DEBUG_PRINT("Response is OK\n");
             return true;
@@ -102,9 +101,9 @@ public:
 
         DEBUG_PRINT("Sending Command: AT+CF\r\n");
         this->serial->printf("AT+CF\r\n");
-        
+
         // Wait for response
-        if(waitUntilACKReceived(500))
+        if (waitUntilACKReceived(500))
         {
             DEBUG_PRINT("Response is OK\n");
             return true;
@@ -120,9 +119,9 @@ public:
 
         DEBUG_PRINT("Sending Command: AT+CB\r\n");
         this->serial->printf("AT+CB\r\n");
-        
+
         // Wait for response
-        if(waitUntilACKReceived(500))
+        if (waitUntilACKReceived(500))
         {
             DEBUG_PRINT("Response is OK\n");
             return true;
@@ -135,9 +134,9 @@ public:
     {
         DEBUG_PRINT("Sending Command: AT+CC\r\n");
         this->serial->printf("AT+CC\r\n");
-        
+
         // Wait for response
-        if(waitUntilACKReceived(500))
+        if (waitUntilACKReceived(500))
         {
             DEBUG_PRINT("Response is OK\n");
             return true;
@@ -153,9 +152,9 @@ public:
 
         DEBUG_PRINT("Sending Command: AT+CD\r\n");
         this->serial->printf("AT+CD\r\n");
-        
+
         // Wait for response
-        if(waitUntilACKReceived(500))
+        if (waitUntilACKReceived(500))
         {
             DEBUG_PRINT("Response is OK\n");
             return true;
@@ -168,31 +167,31 @@ public:
     {
         // Read pending serial data
         proccessPendingCommands();
-        
+
         DEBUG_PRINT("Sending Command: AT+CM%02d\r\n", (int)mode);
         this->serial->printf("AT+CM%02d\r\n", (int)mode);
 
         // Wait for response
-        if(waitUntilACKReceived(500))
+        if (waitUntilACKReceived(500))
         {
             DEBUG_PRINT("Response is OK\n");
 
             // Here we need to poll for some time to make sure the mode has actually changed.
             unsigned long timeout = millis() + 300; // 300 ms timeout for waiting until mode changes.
-            while(true)
+            while (true)
             {
-                if(timeout <= millis())
+                if (timeout <= millis())
                 {
                     DEBUG_PRINT("Did not receive QM result - Timed Out\n");
                     return false;
                 }
 
-                while(serial->available())
+                while (serial->available())
                 {
                     String received = serial->readStringUntil('\n');
 
                     // Check if it is the response, else just move it to the command buffer for processing later.
-                    if(received.substring(0, 2) == "QM")
+                    if (received.substring(0, 2) == "QM")
                     {
                         uint8_t receivedMode = extractValueFromQueryResponse(received);
                         this->audioMode = (AudioMode)receivedMode;
@@ -224,23 +223,23 @@ public:
 
     AudioMode getAudioMode(bool forceUpdate = false)
     {
-        if(!forceUpdate)
+        if (!forceUpdate)
         {
             return this->audioMode;
         }
 
         DEBUG_PRINT("Sending Command: AT+QM\r\n");
         this->serial->printf("AT+QM\r\n");
-        
+
         // Wait for response
         String response = waitUntilResponseReceived(1000, "QM");
-        if(response != "")
+        if (response != "")
         {
             DEBUG_PRINT("Response is %s\n", response.c_str());
             uint8_t mode = extractValueFromQueryResponse(response);
 
             // Wait for ACK
-            if(waitUntilACKReceived(500))
+            if (waitUntilACKReceived(500))
             {
                 DEBUG_PRINT("Response is OK\n");
                 this->audioMode = (AudioMode)mode;
@@ -250,30 +249,30 @@ public:
             DEBUG_PRINT("ACK is Timed Out or ERROR\n");
             return this->audioMode;
         }
-        
+
         DEBUG_PRINT("Response Timed Out or ERROR\n");
         return this->audioMode;
     }
 
     BluetoothStatus getBluetoothStatus(bool forceUpdate = false)
     {
-        if(!forceUpdate)
+        if (!forceUpdate)
         {
             return this->bluetoothStatus;
         }
 
         DEBUG_PRINT("Sending Command: AT+TS\r\n");
         this->serial->printf("AT+TS\r\n");
-        
+
         // Wait for response
         String response = waitUntilResponseReceived(500, "TS");
-        if(response != "")
+        if (response != "")
         {
             DEBUG_PRINT("Response is %s\n", response.c_str());
             uint8_t status = extractValueFromQueryResponse(response);
 
             // Wait for ACK
-            if(waitUntilACKReceived(500))
+            if (waitUntilACKReceived(500))
             {
                 DEBUG_PRINT("Response is OK\n");
                 this->bluetoothStatus = (BluetoothStatus)status;
@@ -283,7 +282,7 @@ public:
             DEBUG_PRINT("ACK is Timed Out or ERROR\n");
             return this->bluetoothStatus;
         }
-        
+
         DEBUG_PRINT("Response Timed Out or ERROR\n");
         return this->bluetoothStatus;
     }
@@ -297,16 +296,16 @@ public:
 
         DEBUG_PRINT("Sending Command: AT+QA\r\n");
         this->serial->printf("AT+QA\r\n");
-        
+
         // Wait for response
         String response = waitUntilResponseReceived(500, "QA");
-        if(response != "")
+        if (response != "")
         {
             DEBUG_PRINT("Response is %s\n", response.c_str());
             uint8_t volume = extractValueFromQueryResponse(response);
 
             // Wait for ACK
-            if(waitUntilACKReceived(500))
+            if (waitUntilACKReceived(500))
             {
                 DEBUG_PRINT("Response is OK\n");
                 return volume;
@@ -314,14 +313,14 @@ public:
             DEBUG_PRINT("ACK is Timed Out or ERROR\n");
             return 0;
         }
-        
+
         DEBUG_PRINT("Response is Timed Out or ERROR\n");
         return 0;
     }
 
     bool getTFCardStatus(bool forceUpdate = false)
     {
-        if(forceUpdate)
+        if (forceUpdate)
         {
             this->updateOnlineDevices();
         }
@@ -332,7 +331,7 @@ public:
 
     bool getUDiskStatus(bool forceUpdate = false)
     {
-        if(forceUpdate)
+        if (forceUpdate)
         {
             this->updateOnlineDevices();
         }
@@ -352,7 +351,7 @@ public:
     }
 
     // Phone Call Functions
-    
+
     /// @brief Calls the specified phone number.
     /// @param phoneNumber The phone number to call.
     /// @return true on successful call.
@@ -363,9 +362,9 @@ public:
 
         DEBUG_PRINT("Sending Command: AT+BT%s\r\n", phoneNumber.c_str());
         this->serial->printf("AT+BT%s\r\n", phoneNumber.c_str());
-        
+
         // Wait for response
-        if(waitUntilACKReceived(500))
+        if (waitUntilACKReceived(500))
         {
             DEBUG_PRINT("Response is OK\n");
             return true;
@@ -375,7 +374,7 @@ public:
     }
 
     /// @brief Call back a phone call.
-    /// @return 
+    /// @return
     bool phoneBack()
     {
         // Read pending serial data
@@ -383,9 +382,9 @@ public:
 
         DEBUG_PRINT("Sending Command: AT+BA00\r\n");
         this->serial->printf("AT+BA00\r\n");
-        
+
         // Wait for response
-        if(waitUntilACKReceived(500))
+        if (waitUntilACKReceived(500))
         {
             DEBUG_PRINT("Response is OK\n");
             return true;
@@ -403,9 +402,9 @@ public:
 
         DEBUG_PRINT("Sending Command: AT+BA03\r\n");
         this->serial->printf("AT+BA03\r\n");
-        
+
         // Wait for response
-        if(waitUntilACKReceived(500))
+        if (waitUntilACKReceived(500))
         {
             DEBUG_PRINT("Response is OK\n");
             return true;
@@ -421,9 +420,9 @@ public:
 
         DEBUG_PRINT("Sending Command: AT+BA02\r\n");
         this->serial->printf("AT+BA02\r\n");
-        
+
         // Wait for response
-        if(waitUntilACKReceived(500))
+        if (waitUntilACKReceived(500))
         {
             DEBUG_PRINT("Response is OK\n");
             return true;
@@ -441,9 +440,9 @@ public:
 
         DEBUG_PRINT("Sending Command: AT+BA04\r\n");
         this->serial->printf("AT+BA04\r\n");
-        
+
         // Wait for response
-        if(waitUntilACKReceived(500))
+        if (waitUntilACKReceived(500))
         {
             DEBUG_PRINT("Response is OK\n");
             return true;
@@ -453,11 +452,11 @@ public:
     }
 
 private:
-    HardwareSerial* serial;
+    HardwareSerial *serial;
     AudioMode audioMode;
     BluetoothStatus bluetoothStatus;
     uint8_t onlineDevices = 0; // BIT values of online devices ([2]TF-Card,[1]- ,[0]U-Disk)
-    
+
     // TF-UDisk variables
     String currentFilePlaying = "";
 
@@ -467,8 +466,8 @@ private:
 
     Queue<String> *commandQueue;
 
-    // Helper functions 
-    
+    // Helper functions
+
     /// @brief Updates the online devices variable.
     void updateOnlineDevices()
     {
@@ -477,16 +476,16 @@ private:
 
         DEBUG_PRINT("Sending Command: AT+MV\r\n");
         this->serial->printf("AT+MV\r\n");
-        
+
         // Wait for response
         String response = waitUntilResponseReceived(500, "MV");
-        if(response != "")
+        if (response != "")
         {
             DEBUG_PRINT("Response is %s\n", response.c_str());
             uint8_t onlineDevices = extractValueFromQueryResponse(response);
 
             // Wait for ACK
-            if(waitUntilACKReceived(500))
+            if (waitUntilACKReceived(500))
             {
                 DEBUG_PRINT("Response is OK\n");
                 this->onlineDevices = onlineDevices;
@@ -505,8 +504,8 @@ private:
     // Serial Communication helping functions
 
     void readSerialToCommandBuffer()
-    {        
-        while(serial->available())
+    {
+        while (serial->available())
         {
             String received = serial->readStringUntil('\n');
             commandQueue->push(received);
@@ -515,7 +514,7 @@ private:
 
     void proccessPendingCommands()
     {
-        while(commandQueue->count() > 0)
+        while (commandQueue->count() > 0)
         {
             parseReceivedCommand(commandQueue->pop());
         }
@@ -527,13 +526,13 @@ private:
 
         String plainCmd = cmd.substring(0, 2);
         // Status
-        if(plainCmd == "TS")
+        if (plainCmd == "TS")
         {
             uint8_t status = extractValueFromQueryResponse(cmd);
             DEBUG_PRINT("Status changed %u\n", status);
             this->bluetoothStatus = (BluetoothStatus)status;
         }
-        else if(plainCmd == "TT")
+        else if (plainCmd == "TT")
         {
             String phoneNumber = cmd.substring(3, cmd.length() - 1);
             DEBUG_PRINT("Phone call received %s\n", phoneNumber.c_str());
@@ -541,42 +540,42 @@ private:
             this->phoneNumber = phoneNumber;
         }
 
-        else if(plainCmd == "MU")
+        else if (plainCmd == "MU")
         {
             uint8_t code = extractValueFromQueryResponse(cmd);
-            switch(code)
+            switch (code)
             {
-                case 1:
-                    DEBUG_PRINT("U-Disk inserted\n");
-                    delay(100);
-                    updateOnlineDevices();
-                    break;
-                case 2:
-                    DEBUG_PRINT("U-Disk removed\n");
-                    delay(100);
-                    updateOnlineDevices();
-                    break;
-                case 3:
-                    DEBUG_PRINT("TF-Card inserted\n");
-                    delay(100);
-                    updateOnlineDevices();
-                    break;
-                case 4:
-                    DEBUG_PRINT("TF-Card removed\n");
-                    delay(100);
-                    updateOnlineDevices();
-                    break;
+            case 1:
+                DEBUG_PRINT("U-Disk inserted\n");
+                delay(100);
+                updateOnlineDevices();
+                break;
+            case 2:
+                DEBUG_PRINT("U-Disk removed\n");
+                delay(100);
+                updateOnlineDevices();
+                break;
+            case 3:
+                DEBUG_PRINT("TF-Card inserted\n");
+                delay(100);
+                updateOnlineDevices();
+                break;
+            case 4:
+                DEBUG_PRINT("TF-Card removed\n");
+                delay(100);
+                updateOnlineDevices();
+                break;
             }
         }
-    
-        else if(plainCmd == "QM")
+
+        else if (plainCmd == "QM")
         {
             uint8_t mode = extractValueFromQueryResponse(cmd);
             DEBUG_PRINT("Audio mode changed %u\n", mode);
             this->audioMode = (AudioMode)mode;
         }
 
-        else if(plainCmd == "MF")
+        else if (plainCmd == "MF")
         {
             String filename = cmd.substring(3);
             DEBUG_PRINT("File playing changed %s\n", filename.c_str());
@@ -598,20 +597,20 @@ private:
     String waitUntilResponseReceived(unsigned long timeout, String expectedResponse)
     {
         timeout += millis();
-        while(true)
+        while (true)
         {
-            if(timeout <= millis())
+            if (timeout <= millis())
             {
                 DEBUG_PRINT("Response Timed Out\n");
                 return "";
             }
 
-            while(serial->available())
+            while (serial->available())
             {
                 String received = serial->readStringUntil('\n');
 
                 // Check if it is the response, else just move it to the command buffer for processing later.
-                if(received.substring(0, 2) == expectedResponse)
+                if (received.substring(0, 2) == expectedResponse)
                 {
                     return received;
                 }
@@ -634,24 +633,24 @@ private:
     bool waitUntilACKReceived(unsigned long timeout)
     {
         timeout += millis();
-        while(true)
+        while (true)
         {
-            if(timeout <= millis())
+            if (timeout <= millis())
             {
                 DEBUG_PRINT("ACK Timed Out\n");
                 return false;
             }
 
-            while(serial->available())
+            while (serial->available())
             {
                 String received = serial->readStringUntil('\n');
 
                 // Check if it is the response, else just move it to the command buffer for processing later.
-                if(received.substring(0, 2) == "OK")
+                if (received.substring(0, 2) == "OK")
                 {
                     return received;
                 }
-                else if(received.substring(0, 2) == "ER")
+                else if (received.substring(0, 2) == "ER")
                 {
                     DEBUG_PRINT("ACK ERROR: %s\n", received.c_str());
                     return false;
