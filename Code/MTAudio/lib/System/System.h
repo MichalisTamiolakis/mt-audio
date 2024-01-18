@@ -316,7 +316,7 @@ private:
                 case AudioSource::USB:
                     display->usbDisplay();
                     break;
-                case AudioSource::SD:
+                case AudioSource::TFCard:
                     display->sdDisplay();
                     break;
                 }
@@ -1131,7 +1131,7 @@ public:
         {
         case AudioSource::Bluetooth:
         case AudioSource::USB:
-        case AudioSource::SD:
+        case AudioSource::TFCard:
             bt201->togglePlayPause();
             break;
         }
@@ -1181,7 +1181,7 @@ public:
             break;
         case AudioSource::Bluetooth:
         case AudioSource::USB:
-        case AudioSource::SD:
+        case AudioSource::TFCard:
             bt201->playPreviousSong();
             break;
         }
@@ -1210,7 +1210,7 @@ public:
             break;
         case AudioSource::Bluetooth:
         case AudioSource::USB:
-        case AudioSource::SD:
+        case AudioSource::TFCard:
             bt201->playNextSong();
             break;
         }
@@ -1239,25 +1239,56 @@ public:
                 tda->input(AUDIO_IN_AUX);
                 break;
             }
+            updateSystemMode(SystemMode::InputSelection);
             break;
         case AudioSource::Aux:
-            audioSource = AudioSource::Bluetooth;
             tda->input(AUDIO_IN_BT_USB_SD);
+
+            // Try canging to bluetooth if possible. If not go to the next available mode.
+            audioSource = AudioSource::Bluetooth;
+            if(!bt201->setAudioMode(AudioMode::Bluetooth))
+            {
+                selectNextInput();
+            }
+            else
+            {
+                updateSystemMode(SystemMode::InputSelection);
+            }
             break;
         case AudioSource::Bluetooth:
-            audioSource = AudioSource::Radio;
-            tda->input(AUDIO_IN_RADIO);
-            break;
+            tda->input(AUDIO_IN_BT_USB_SD);
 
-            // TODO: Add functionality for these
-            // case AudioSource::USB:
-            //     audioSource = AudioSource::Aux;
-            //     break;
-            // case AudioSource::SD:
-            //     audioSource = AudioSource::USB;
-            //     break;
+            // Try canging to UDisk if possible. If not go to the next available mode.
+            audioSource = AudioSource::USB;
+            if(!bt201->setAudioMode(AudioMode::UDisk))
+            {
+                selectNextInput();
+            }
+            else
+            {
+                updateSystemMode(SystemMode::InputSelection);
+            }
+            break;
+        case AudioSource::USB:
+            tda->input(AUDIO_IN_BT_USB_SD);
+
+            // Try canging to UDisk if possible. If not go to the next available mode.
+            audioSource = AudioSource::TFCard;
+            if(!bt201->setAudioMode(AudioMode::TFCard))
+            {
+                selectNextInput();
+            }
+            else
+            {
+                updateSystemMode(SystemMode::InputSelection);
+            }
+            break;
+        default:
+            tda->input(AUDIO_IN_RADIO);
+            audioSource = AudioSource::Radio;
+            updateSystemMode(SystemMode::InputSelection);
+            break;
         }
-        updateSystemMode(SystemMode::InputSelection);
     }
 
     void findBestStations()

@@ -48,7 +48,7 @@ enum class AudioSource
     Aux, // Aux
     Bluetooth, // Bluetooth
     USB, // USB
-    SD // SD
+    TFCard // SD
 };
 
 enum class RadioSeekMode
