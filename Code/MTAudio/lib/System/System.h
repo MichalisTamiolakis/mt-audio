@@ -842,6 +842,8 @@ public:
             }
             break;
         }
+
+        return false;
     }
 
     // static void RDSProcess(uint16_t block1, uint16_t block2, uint16_t block3, uint16_t block4)
