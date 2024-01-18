@@ -176,6 +176,44 @@ public:
         if(waitUntilACKReceived(500))
         {
             DEBUG_PRINT("Response is OK\n");
+
+            // Here we need to poll for some time to make sure the mode has actually changed.
+            unsigned long timeout = millis() + 300; // 300 ms timeout for waiting until mode changes.
+            while(true)
+            {
+                if(timeout <= millis())
+                {
+                    DEBUG_PRINT("Did not receive QM result - Timed Out\n");
+                    return false;
+                }
+
+                while(serial->available())
+                {
+                    String received = serial->readStringUntil('\n');
+
+                    // Check if it is the response, else just move it to the command buffer for processing later.
+                    if(received.substring(0, 2) == "QM")
+                    {
+                        uint8_t receivedMode = extractValueFromQueryResponse(received);
+                        this->audioMode = (AudioMode)receivedMode;
+                        if (this->audioMode == mode)
+                        {
+                            return true;
+                        }
+                        else
+                        {
+                            return false;
+                        }
+                    }
+                    else
+                    {
+                        commandQueue->push(received);
+                    }
+                }
+
+                delay(1);
+            }
+
             return true;
         }
         DEBUG_PRINT("ACK is Timed Out or ERROR\n");
