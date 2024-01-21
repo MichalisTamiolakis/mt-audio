@@ -919,7 +919,10 @@ public:
         ignitionState = true;
         stateBeforeIgnitionOn = systemState;
 
-        updateSystemState(stateBeforeIgnitionOff);
+        if(stateBeforeIgnitionOff != systemState)
+        {
+            updateSystemState(stateBeforeIgnitionOff);
+        }
     }
 
     void ignitionOff()
@@ -929,7 +932,10 @@ public:
         ignitionState = false;
         stateBeforeIgnitionOff = systemState;
 
-        updateSystemState(SystemState::Off);
+        if(stateBeforeIgnitionOn != systemState)
+        {
+            updateSystemState(stateBeforeIgnitionOn);
+        }
     }
 
     void togglePower()
