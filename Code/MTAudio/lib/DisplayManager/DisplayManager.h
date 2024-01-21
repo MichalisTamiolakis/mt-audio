@@ -160,7 +160,7 @@ public:
                 lcd->print("   In call with     ");
                 lcd->setCursor(0,2);
                 printCenter(incomingCallNumber.c_str());
-                clearLine(3);
+                lcd->print("     [2]Hung up     ");
                 break;
         }
     }
