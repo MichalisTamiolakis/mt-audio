@@ -173,19 +173,18 @@ private:
 
     void initTDA()
     {
-        tda->input(AUDIO_IN_RADIO); // 1,2,3    Stereo 1, Stereo 2, Stereo 3
-        tda->loud(false);           // Loud off (true,false)
-        tda->mute(false);           // Mute off (true,false)
-        tda->volume(7);             //  0.......15  -78.75dB...........0dB
-        tda->bass(7);               // 0....7...14  -14dB.....0dB....+14dB
-        tda->treble(7);             // 0....7...14  -14dB.....0dB....+14dB
+        tda->input(AUDIO_IN_RADIO);         // 1,2,3    Stereo 1, Stereo 2, Stereo 3
+        tda->loud(false);                   // Loud off (true,false)
+        tda->mute(false);                   // Mute off (true,false)
+        tda->volume(7);                     //  0.......15  -78.75dB...........0dB
+        tda->bass(7);                       // 0....7...14  -14dB.....0dB....+14dB
+        tda->treble(7);                     // 0....7...14  -14dB.....0dB....+14dB
 
-        tda->sla(2); // 0,1,2,3  0dB, +3.75dB, +7.5dB, +11.25dB
+        tda->sla(2, AUDIO_IN_RADIO);        // 0,1,2,3  0dB, +3.75dB, +7.5dB, +11.25dB
+        tda->sla(3, AUDIO_IN_BT_USB_SD);    // 0,1,2,3  0dB, +3.75dB, +7.5dB, +11.25dB
+        tda->sla(2, AUDIO_IN_AUX);          // 0,1,2,3  0dB, +3.75dB, +7.5dB, +11.25dB
 
-        tda->attLF(0); //  0.......13  0dB.........-36.25dB
-        tda->attRF(0); //  0.......13  0dB.........-36.25dB
-        tda->attLR(0); //  0.......13  0dB.........-36.25dB
-        tda->attRR(0); //  0.......13  0dB.........-36.25dB
+        applyFadeAndBalance();
     }
 
     void initRTC()
