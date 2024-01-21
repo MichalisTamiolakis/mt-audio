@@ -44,7 +44,7 @@
 
 // TDA ADDRESS
 #define TDA_ADDRESS 0x44
-#define LCD_ADDRESS 0x3F
+#define LCD_ADDRESS 0x27
 
 // Serial 2 info
 #define SERIAL2_BAUD 115200
@@ -159,7 +159,7 @@ private:
         radio.setVolume(15);
         radio.setMono(false);
         radio.setMute(false);
-        radio.setSoftMute(true);
+        radio.setSoftMute(false);
 #endif
     }
 
@@ -204,9 +204,14 @@ private:
     {
         Serial2.begin(SERIAL2_BAUD, SERIAL_8N1, RXD2, TXD2);
         delay(200);
-        bt201->init(&Serial2);
         currentBT201AudioMode = AudioMode::Bluetooth;
         currentBT201Status = BluetoothStatus::Pairing;
+        if(audioSource == AudioSource::USB || audioSource == AudioSource::TFCard)
+        {
+            audioSource = AudioSource::Bluetooth;
+        }
+        bt201->init(&Serial2);
+        bt201->setVolume(30);
     }
 
     void updateSystemState(SystemState newState)
@@ -594,7 +599,25 @@ private:
         if (systemState != SystemState::On)
             return;
 
-        // Add logic here to change input if needed.
+        // Mode changes whenever a UDisk card or TF card is inserted or removed
+        tda->input(AUDIO_IN_BT_USB_SD);
+        if(currentBT201AudioMode == AudioMode::Bluetooth && audioSource != AudioSource::Bluetooth)
+        {
+            this->audioSource = AudioSource::Bluetooth;
+            updateSystemMode(SystemMode::InputSelection);
+        }
+        else if(currentBT201AudioMode == AudioMode::UDisk && audioSource != AudioSource::USB)
+        {
+            this->audioSource = AudioSource::USB;
+            updateSystemMode(SystemMode::InputSelection);
+            bt201->setVolume(30);
+        }
+        else if(currentBT201AudioMode == AudioMode::TFCard && audioSource != AudioSource::TFCard)
+        {
+            this->audioSource = AudioSource::TFCard;
+            updateSystemMode(SystemMode::InputSelection);
+            bt201->setVolume(30);
+        }
 
         switch (systemMode)
         {
@@ -609,6 +632,25 @@ private:
     {
         if (systemState != SystemState::On)
             return;
+
+        // If we are in any other mode and suddenly bluetooth music starts or incoming call, then switch to bluetooth.
+        switch(currentBT201Status)
+        {
+            case BluetoothStatus::Pairing:
+                break;
+            case BluetoothStatus::Connected:
+                break;
+            case BluetoothStatus::Phone:
+            case BluetoothStatus::PhoneTalking:
+            case BluetoothStatus::MusicPlaying:
+                if(audioSource != AudioSource::Bluetooth)
+                {
+                    tda->input(AUDIO_IN_BT_USB_SD);
+                    this->audioSource = AudioSource::Bluetooth;
+                    updateSystemMode(SystemMode::InputSelection);
+                }
+                break;
+        }
 
         switch (systemMode)
         {
@@ -802,7 +844,7 @@ public:
             if (bt201->setAudioMode(AudioMode::Bluetooth))
             {
                 tda->input(AUDIO_IN_BT_USB_SD);
-                audioSource = this->audioSource;
+                this->audioSource = audioSource;
                 updateSystemMode(SystemMode::InputSelection);
                 return true;
             }
@@ -817,8 +859,9 @@ public:
             if (bt201->setAudioMode(AudioMode::UDisk))
             {
                 tda->input(AUDIO_IN_BT_USB_SD);
-                audioSource = this->audioSource;
+                this->audioSource = audioSource;
                 updateSystemMode(SystemMode::InputSelection);
+                bt201->setVolume(30);
                 return true;
             }
             else
@@ -832,8 +875,9 @@ public:
             if (bt201->setAudioMode(AudioMode::TFCard))
             {
                 tda->input(AUDIO_IN_BT_USB_SD);
-                audioSource = this->audioSource;
+                this->audioSource = audioSource;
                 updateSystemMode(SystemMode::InputSelection);
+                bt201->setVolume(30);
                 return true;
             }
             else
