@@ -157,7 +157,7 @@ private:
         // // Set all radio setting to the fixed values.
         radio.setBandFrequency(RADIO_BAND_FM, stationAtShutdown);
         radio.setVolume(15);
-        radio.setMono(false);
+        radio.setMono(true);
         radio.setMute(false);
         radio.setSoftMute(false);
 #endif
