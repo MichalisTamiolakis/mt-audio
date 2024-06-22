@@ -32,6 +32,9 @@
 // DS3231
 #include <RTClib.h>
 
+// OTA Updater
+#include <OTAUpdater.h>
+
 #define DEBUG_LOG_ENABLED
 
 #ifdef DEBUG_LOG_ENABLED
@@ -118,6 +121,8 @@ private:
 
     // Async Updates for Temp/Time/Brightness
     AsyncDelayHelper *timeUpdateDelay;
+
+    OTAUpdater *otaUpdater;
 
     bool ignitionState;
 
@@ -239,6 +244,11 @@ private:
 
             DEBUG_LOG("System on\n");
 
+            if(otaUpdater != nullptr)
+            {
+                delete otaUpdater;
+            }
+
             break;
         case SystemState::Off:
             updateSystemMode(SystemMode::Idle);
@@ -258,6 +268,11 @@ private:
             digitalWrite(BTN_BACKLIGHT, LOW);
 
             DEBUG_LOG("System off\n");
+
+            if(otaUpdater != nullptr)
+            {
+                delete otaUpdater;
+            }
 
             break;
         case SystemState::Standby:
@@ -280,6 +295,24 @@ private:
 
             DEBUG_LOG("System Standby\n");
 
+            if(otaUpdater != nullptr)
+            {
+                delete otaUpdater;
+            }
+
+            break;
+        case SystemState::Update:
+            delay(100);
+            digitalWrite(PWR_ENABLE, LOW);
+            // analogWrite(BTN_BACKLIGHT, 0);
+            // ledcWrite(BCK_LED_CHANNEL, 0);
+            ledcDetachPin(BTN_BACKLIGHT);
+            digitalWrite(BTN_BACKLIGHT, LOW);
+
+            display->powerOn();
+            updateSystemMode(SystemMode::TurnOnSequence);
+
+            DEBUG_LOG("System Standby\n");
             break;
         }
 
@@ -329,6 +362,11 @@ private:
             else if (systemState == SystemState::Standby)
             {
                 updateDateTime();
+            }
+            else if (systemState == SystemState::Update)
+            {
+                display->updateDisplay();
+                otaUpdater = new OTAUpdater();
             }
             break;
 
@@ -586,11 +624,11 @@ private:
         uint8_t rear = fade > 0 ? fade : 0;
 
         // Apply the volume to each speaker
-        tda->attLF(13 - (left + front));
-        tda->attRF(13 - (right + front));
+        tda->attLF(12 - (left + front));
+        tda->attRF(12 - (right + front));
 
-        tda->attLR(13 - (left + rear));
-        tda->attRR(13 - (right + rear));
+        tda->attLR(12 - (left + rear));
+        tda->attRR(12 - (right + rear));
     }
 
     void BT201AudioModeChanged()
@@ -663,7 +701,7 @@ private:
     void updateCallerNumber()
     {
         // Also update the caller number for bluetooth calls once every second
-        if (currentBT201Status == BluetoothStatus::Phone || currentBT201Status == BluetoothStatus::PhoneTalking && systemMode == SystemMode::Idle)
+        if ((currentBT201Status == BluetoothStatus::Phone || currentBT201Status == BluetoothStatus::PhoneTalking) && systemMode == SystemMode::Idle)
         {
             updateSystemMode(SystemMode::Idle);
         }
@@ -813,6 +851,12 @@ public:
                 timeUpdateDelay->restartDelay();
             }
         }
+    
+        // OTA Update check
+        if(otaUpdater != nullptr)
+        {
+            otaUpdater->loop();
+        }
     }
 
     void setBacklightBrightness(uint8_t val)
@@ -917,6 +961,12 @@ public:
         DEBUG_LOG("Ignition on\n");
 
         ignitionState = true;
+
+        if(systemState == SystemState::Update)
+        {
+            return;
+        }
+
         stateBeforeIgnitionOn = systemState;
 
         if (stateBeforeIgnitionOff != systemState)
@@ -930,6 +980,12 @@ public:
         DEBUG_LOG("Ignition off\n");
 
         ignitionState = false;
+
+        if(systemState == SystemState::Update)
+        {
+            return;
+        }
+
         stateBeforeIgnitionOff = systemState;
 
         if (stateBeforeIgnitionOn != systemState)
@@ -957,6 +1013,20 @@ public:
                 updateSystemState(SystemState::Off);
             }
             break;
+        }
+    }
+
+    void toggleUpdateMode()
+    {
+        if(systemState == SystemState::Off)
+        {
+            updateSystemState(SystemState::Update);
+            return;
+        }
+        else if(systemState == SystemState::Update)
+        {
+            updateSystemState(SystemState::Off);
+            return;
         }
     }
 

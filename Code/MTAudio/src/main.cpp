@@ -75,6 +75,11 @@ void togglePower()
     radioSystem.togglePower();
 }
 
+void toggleUpdateMode()
+{
+    radioSystem.toggleUpdateMode();
+}
+
 void onClockSetBtn()
 {
     radioSystem.enterClockSetMode();
@@ -218,8 +223,9 @@ void saveStationToN6()
 
 void initButtons()
 {
-    powerBtn = new SingleButton(BUTTON_SINGLE, PWR_BTN, 50, 300);
+    powerBtn = new SingleButton(BUTTON_LONG, PWR_BTN, 50, 10000);
     powerBtn->onPress(togglePower);
+    powerBtn->onLongPress(toggleUpdateMode);
 
     clockSetBtn = new SingleButton(BUTTON_LONG, CLK_BTN_SET, 50, 300);
     clockSetBtn->onPress(onDisplayFullDateButton);
@@ -240,7 +246,7 @@ void initButtons()
     treFadBtn = new MultiplexedButton(BUTTON_SINGLE, BTN_B0, BTN_B1, BTN_B2, BTN_B3, BTN_B4, TRE_FAD, 50, 300);
     treFadBtn->onPress(openTrebleAndFadeSettings);
 
-    bstLdnBtn = new MultiplexedButton(BUTTON_LONG, BTN_B0, BTN_B1, BTN_B2, BTN_B3, BTN_B4, BST_LDN, 50, 300);
+    bstLdnBtn = new MultiplexedButton(BUTTON_LONG, BTN_B0, BTN_B1, BTN_B2, BTN_B3, BTN_B4, BST_LDN, 50, 1000);
     bstLdnBtn->onPress(switchToAutomaticStationsBand);
     bstLdnBtn->onLongPress(toggleLoudness);
 
@@ -253,7 +259,7 @@ void initButtons()
     upBtn = new MultiplexedButton(BUTTON_REPEAT, BTN_B0, BTN_B1, BTN_B2, BTN_B3, BTN_B4, UP, 50, 300);
     upBtn->onPress(onUpBtn);
 
-    bandManBtn = new MultiplexedButton(BUTTON_LONG, BTN_B0, BTN_B1, BTN_B2, BTN_B3, BTN_B4, BND_MAN, 50, 300);
+    bandManBtn = new MultiplexedButton(BUTTON_LONG, BTN_B0, BTN_B1, BTN_B2, BTN_B3, BTN_B4, BND_MAN, 50, 1000);
     bandManBtn->onPress(selectNextInput);
     bandManBtn->onLongPress(toggleSeekMode);
 

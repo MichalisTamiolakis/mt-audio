@@ -72,9 +72,9 @@ public:
         lcd->setCursor(0,1);
         lcd->printf("      %02d:%02d:%02d      ", hour, minute, second);
         lcd->setCursor(0,2);
-        lcd->printf("       Tin: %02.1f", temperatureIn);
+        lcd->printf("        In: %02.1f", temperatureIn);
         lcd->setCursor(0,3);
-        lcd->printf("       Tout: %02.1f", temperatureOut);
+        lcd->printf("        Out: %02.1f", temperatureOut);
     }
 
     void fmDisplay(FMBand band, uint16_t frequency, char* stationName)
@@ -123,7 +123,6 @@ public:
 
     void btDisplay(BluetoothStatus status, String incomingCallNumber = "")
     {
-        
         switch(status)
         {
             case BluetoothStatus::Pairing:
@@ -504,6 +503,15 @@ public:
         lcd->print("BEST SIGNAL STATIONS");
         lcd->setCursor(0,2);
         lcd->print("    SEARCHING...    ");
+        clearLine(3);
+    }
+
+    void updateDisplay()
+    {
+        lcd->setCursor(0, 1);
+        lcd->print("    Update Mode     ");
+        lcd->setCursor(0,2);
+        lcd->print("   P/W: 012345678   ");
         clearLine(3);
     }
 

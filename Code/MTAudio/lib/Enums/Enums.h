@@ -4,7 +4,8 @@ enum class SystemState
 {
     Off,
     Standby,
-    On
+    On,
+    Update,
 };
 
 enum class SystemMode
