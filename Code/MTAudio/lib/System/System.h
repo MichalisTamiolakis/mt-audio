@@ -603,16 +603,11 @@ String rdsRadioText;
         uint8_t rear = fade > 0 ? fade : 0;
 
         // Apply the volume to each speaker
-        // tda->attLF(12 - (left + front));
-        // tda->attRF(12 - (right + front));
 
-        // tda->attLR(12 - (left + rear));
-        // tda->attRR(12 - (right + rear));
-
-        tda->attLF(12);
-        tda->attRF(12);
-        tda->attLR(12);
-        tda->attRR(12);
+        tda->attLF(right + rear);
+        tda->attRF(left + rear);
+        tda->attLR(right + front);
+        tda->attRR(left + front);
     }
 
     void BT201AudioModeChanged()
