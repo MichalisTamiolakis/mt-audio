@@ -1136,12 +1136,10 @@ public:
         if(systemState == SystemState::Off)
         {
             updateSystemState(SystemState::Update);
-            return;
         }
         else if(systemState == SystemState::Update)
         {
             ESP.restart();
-            return;
         }
     }
 
