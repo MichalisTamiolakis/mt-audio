@@ -35,9 +35,7 @@
 // OTA Updater
 #include <OTAUpdater.h>
 
-#define DEBUG_LOG_ENABLED
-
-#ifdef DEBUG_LOG_ENABLED
+#ifdef DEBUG
 #define DEBUG_LOG(format, ...) Serial.printf(format, ##__VA_ARGS__)
 #else
 #define DEBUG_LOG(format, ...)
@@ -47,7 +45,11 @@
 
 // TDA ADDRESS
 #define TDA_ADDRESS 0x44
-#define LCD_ADDRESS 0x27
+#ifdef DEBUG
+#define LCD_ADDRESS 0x3F // Home screen for debugging
+#else
+#define LCD_ADDRESS 0x27 // Car mounted screen
+#endif
 
 // Serial 2 info
 #define SERIAL2_BAUD 115200

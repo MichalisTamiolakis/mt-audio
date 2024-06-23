@@ -5,8 +5,6 @@
 #include <string.h>
 #include <Queue.h>
 
-#define DEBUG
-
 #ifdef DEBUG
 #define DEBUG_PRINT(format, ...) Serial.printf(format, ##__VA_ARGS__)
 #else
