@@ -1140,7 +1140,7 @@ public:
         }
         else if(systemState == SystemState::Update)
         {
-            updateSystemState(SystemState::Off);
+            ESP.restart();
             return;
         }
     }
