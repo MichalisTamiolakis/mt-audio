@@ -14,7 +14,6 @@
 #include <Wire.h>
 #include <radio.h>
 
-
 // ----- Register Definitions -----
 
 // no chip-registers without a chip.
@@ -250,10 +249,9 @@ void RADIO::clearRDS() {
 
 // send valid and good data to the RDS processor via newFunction
 // remember the RDS function
-void RADIO::attachReceiveRDS(receiveRDSFunction newFunction) {
+void RADIO::attachReceiveRDS(TReceiveRDSFunction newFunction) {
   _sendRDS = newFunction;
-}  // attachReceiveRDS()
-
+}
 
 // format the current frequency for display and printing
 void RADIO::formatFrequency(char *s, uint8_t length) {

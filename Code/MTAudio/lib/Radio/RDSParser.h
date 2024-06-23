@@ -23,6 +23,7 @@
 #define __RDSPARSER_H__
 
 #include <Arduino.h>
+#include <functional>
 
 /// callback function for passing a ServiceName, text and Time when RDS is available.
 extern "C" {
@@ -31,6 +32,9 @@ extern "C" {
   typedef void (*receiveTimeFunction)(uint8_t hour, uint8_t minute);
 }
 
+typedef std::function<void(const char *name)> TRDSServiceNameCallback;
+typedef std::function<void(const char *name)> TRDSTextCallback;
+typedef std::function<void(uint8_t hour, uint8_t minute)> TRDSTimeCallback;
 
 /// Library for parsing RDS data values and extracting information.
 class RDSParser {
@@ -43,9 +47,9 @@ public:
   /// Pass all available RDS data through this function.
   void processData(uint16_t block1, uint16_t block2, uint16_t block3, uint16_t block4);
 
-  void attachServiceNameCallback(receiveServiceNameFunction newFunction);  ///< Register function for displaying a new Service Name.
-  void attachTextCallback(receiveTextFunction newFunction);                ///< Register the function for displaying a rds text.
-  void attachTimeCallback(receiveTimeFunction newFunction);                ///< Register function for displaying a new time
+  void attachServiceNameCallback(TRDSServiceNameCallback newFunction);  ///< Register function for displaying a new Service Name.
+  void attachTextCallback(TRDSTextCallback newFunction);                ///< Register the function for displaying a rds text.
+  void attachTimeCallback(TRDSTimeCallback newFunction);                ///< Register function for displaying a new time
 
 private:
   // ----- actual RDS values
@@ -61,9 +65,9 @@ private:
   char programServiceName[10];  // found station name or empty. Is max. 8 character long.
   char lastServiceName[10];     // found station name or empty. Is max. 8 character long.
 
-  receiveServiceNameFunction _sendServiceName;  ///< Registered ServiceName function.
-  receiveTimeFunction _sendTime;                ///< Registered Time function.
-  receiveTextFunction _sendText;
+  TRDSServiceNameCallback _sendServiceName;  ///< Registered ServiceName function.
+  TRDSTextCallback _sendText;                ///< Registered Text function.
+  TRDSTimeCallback _sendTime;                ///< Registered Time function.
 
   uint16_t _lastRDSMinutes;  ///< last RDS time send to callback.
 

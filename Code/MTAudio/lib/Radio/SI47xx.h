@@ -87,7 +87,7 @@ public:
   void seekUp(bool toNextSender = true);    // start seek mode upwards
   void seekDown(bool toNextSender = true);  // start seek mode downwards
 
-  void attachReceiveRDS(receiveRDSFunction newFunction) override;  ///< Register a RDS processor function.
+  void attachReceiveRDS(TReceiveRDSFunction newFunction) override;  ///< Register a RDS processor function.
   void checkRDS();                                                 // read RDS data from the current station and process when data available.
 
   void getRadioInfo(RADIO_INFO *info);

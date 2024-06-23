@@ -59,9 +59,10 @@ public:
             lcd->printf("%02d:%02d", hour, minute);
     }
 
-    void updateTemperatureDisplay(float temperature)
+    void updateTemperatureDisplay(int temperatureReading)
     {
-
+        lcd->setCursor(0,0);
+        lcd->printf("%04d", temperatureReading);
     }
 
     // Main Displays
@@ -77,7 +78,7 @@ public:
         lcd->printf("        Out: %02.1f", temperatureOut);
     }
 
-    void fmDisplay(FMBand band, uint16_t frequency, char* stationName)
+    void fmDisplay(FMBand band, uint16_t frequency, String serviceName, String rdsText)
     {
         clearLine(1);
         lcd->setCursor(0,1);
@@ -101,10 +102,10 @@ public:
         lcd->print((float)frequency/100); 
         lcd->print(" MHz");
 
-        if(stationName != nullptr)
+        if(serviceName != nullptr)
         {
             lcd->setCursor(0,2);
-            lcd->print("      "); lcd->print(stationName); lcd->print("      ");
+            printCenter(serviceName.c_str());
         }
         else
         {
@@ -512,7 +513,7 @@ public:
         lcd->print("    Update Mode     ");
         lcd->setCursor(0,2);
         lcd->print("   P/W: 012345678   ");
-        lcd->setCursor(0,2);
+        lcd->setCursor(0,3);
         lcd->print("Visit:mt-audio.local");
     }
 

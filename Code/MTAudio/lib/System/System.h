@@ -75,6 +75,15 @@
 
 // Generic Settings
 #define SAVE_STATION_PAUSE 300 // 300 ms pause when saving station
+#define RDS_TIMEOUT 5000       // 5 seconds timeout for RDS data
+
+// Automatic Backglight Dimming
+#define MAX_LIGHT_SAMPLES 10
+#define LIGHT_SAMPLE_INTERVAL 1000 // 1000ms between each sample
+#define MIN_LIGHT_SENSOR_VALUE 1000
+#define MAX_LIGHT_SENSOR_VALUE 3000
+#define MAX_LCD_BRIGHTNESS 200
+#define MIN_LCD_BRIGHTNESS 40
 
 // Overlay Menu display times
 #define TURN_ON_SEQUENCE_DISPLAY_TIME 3000
@@ -98,10 +107,12 @@ private:
 
     // Radio
     SI4703 radio = SI4703();
-// static RDSParser *rdsParser;
+    RDSParser rdsParser;
+    unsigned long lastRDSUpdate = 0;
+    
 #ifdef RADIO_ENABLED
-// static String rdsServiceName;
-// static String rdsRadioText;
+String rdsServiceName;
+String rdsRadioText;
 #endif
     uint16_t stationAtShutdown = 8870;
 
@@ -122,7 +133,7 @@ private:
     SystemMode delayMode; // Mode to switch to after delay
 
     // Async Updates for Temp/Time/Brightness
-    AsyncDelayHelper *timeUpdateDelay;
+    AsyncDelayHelper *everySecondDelay;
 
     OTAUpdater *otaUpdater;
 
@@ -141,15 +152,16 @@ private:
     int8_t balance = 0;
     int8_t fade = 0;
 
+    // Brightness
+    uint16_t lightSamplesValue = 0;
+    uint8_t lightSampleCount = 0;
+    unsigned long previousLightSampleTime = 0;
+
     void initRadio()
     {
 #ifdef RADIO_ENABLED
         radio.setup(RADIO_RESETPIN, RADIO_RST);
         radio.setup(RADIO_MODEPIN, SDA_PIN);
-
-        // // Enable information to the Serial port
-        // radio.debugEnable(true);
-        // radio._wireDebug(true);
 
         // // Set FM Options for Europe
         radio.setup(RADIO_FMSPACING, RADIO_FMSPACING_100);  // for EUROPE
@@ -158,15 +170,29 @@ private:
         // // Initialize the Radio
         radio.initWire(Wire);
 
-        // radio.debugEnable(true);
-        // radio._wireDebug(true);
-
         // // Set all radio setting to the fixed values.
         radio.setBandFrequency(RADIO_BAND_FM, stationAtShutdown);
         radio.setVolume(15);
         radio.setMono(true);
         radio.setMute(false);
         radio.setSoftMute(false);
+
+        radio.attachReceiveRDS(
+            [this](uint16_t block1, uint16_t block2, uint16_t block3, uint16_t block4) {
+                this->RDSProcess(block1, block2, block3, block4);
+            }
+        );
+        rdsParser.attachServiceNameCallback(
+            [this](const char *name) {
+                this->RDSServiceNameUpdate(name);
+            }
+        );
+        rdsParser.attachTextCallback(
+            [this](const char *text) {
+                this->RDSRadioTextUpdate(text);
+            }
+        );
+
 #endif
     }
 
@@ -230,7 +256,6 @@ private:
         {
         case SystemState::On:
             digitalWrite(PWR_ENABLE, HIGH);
-            // analogWrite(BTN_BACKLIGHT, 60);
             ledcAttachPin(BTN_BACKLIGHT, BCK_LED_CHANNEL);
             display->powerOn();
             delay(100);
@@ -265,7 +290,6 @@ private:
 
             delay(100);
             digitalWrite(PWR_ENABLE, LOW);
-            // analogWrite(BTN_BACKLIGHT, 0);
             ledcDetachPin(BTN_BACKLIGHT);
             digitalWrite(BTN_BACKLIGHT, LOW);
 
@@ -287,8 +311,6 @@ private:
 
             delay(100);
             digitalWrite(PWR_ENABLE, LOW);
-            // analogWrite(BTN_BACKLIGHT, 0);
-            // ledcWrite(BCK_LED_CHANNEL, 0);
             ledcDetachPin(BTN_BACKLIGHT);
             digitalWrite(BTN_BACKLIGHT, LOW);
 
@@ -306,8 +328,6 @@ private:
         case SystemState::Update:
             delay(100);
             digitalWrite(PWR_ENABLE, LOW);
-            // analogWrite(BTN_BACKLIGHT, 0);
-            // ledcWrite(BCK_LED_CHANNEL, 0);
             ledcDetachPin(BTN_BACKLIGHT);
             digitalWrite(BTN_BACKLIGHT, LOW);
 
@@ -344,7 +364,7 @@ private:
                 switch (audioSource)
                 {
                 case AudioSource::Radio:
-                    display->fmDisplay(isCurrentStationSaved ? band : FMBand::FM, freq, nullptr);
+                    display->fmDisplay(isCurrentStationSaved ? band : FMBand::FM, freq, rdsServiceName, rdsRadioText);
                     break;
                 case AudioSource::Bluetooth:
                     display->btDisplay(currentBT201Status, bt201->getCallerPhoneNumber());
@@ -427,31 +447,31 @@ private:
             startDelayedModeTransition(SystemMode::Idle, DATETIME_SET_DISPLAY_TIME);
             now = rtc->now();
             display->dateSetDisplay(now.year(), now.month(), now.day(), now.hour(), now.minute(), now.second(), prevMode != newMode);
-            timeUpdateDelay->restartDelay();
+            everySecondDelay->restartDelay();
             break;
         case SystemMode::MonthSet:
             startDelayedModeTransition(SystemMode::Idle, DATETIME_SET_DISPLAY_TIME);
             now = rtc->now();
             display->monthSetDisplay(now.year(), now.month(), now.day(), now.hour(), now.minute(), now.second(), prevMode != newMode);
-            timeUpdateDelay->restartDelay();
+            everySecondDelay->restartDelay();
             break;
         case SystemMode::YearSet:
             startDelayedModeTransition(SystemMode::Idle, DATETIME_SET_DISPLAY_TIME);
             now = rtc->now();
             display->yearSetDisplay(now.year(), now.month(), now.day(), now.hour(), now.minute(), now.second(), prevMode != newMode);
-            timeUpdateDelay->restartDelay();
+            everySecondDelay->restartDelay();
             break;
         case SystemMode::HourSet:
             startDelayedModeTransition(SystemMode::Idle, DATETIME_SET_DISPLAY_TIME);
             now = rtc->now();
             display->hourSetDisplay(now.year(), now.month(), now.day(), now.hour(), now.minute(), now.second(), prevMode != newMode);
-            timeUpdateDelay->restartDelay();
+            everySecondDelay->restartDelay();
             break;
         case SystemMode::MinuteSet:
             startDelayedModeTransition(SystemMode::Idle, DATETIME_SET_DISPLAY_TIME);
             now = rtc->now();
             display->minuteSetDisplay(now.year(), now.month(), now.day(), now.hour(), now.minute(), now.second(), prevMode != newMode);
-            timeUpdateDelay->restartDelay();
+            everySecondDelay->restartDelay();
             break;
         }
 
@@ -474,50 +494,6 @@ private:
         hasDelayStarted = false;
     }
 
-    void updateDateTime()
-    {
-        DateTime now = rtc->now();
-        switch (systemState)
-        {
-        case SystemState::On:
-            switch (systemMode)
-            {
-            case SystemMode::ShowFullDateTime:
-                display->fullDateTimeDisplay(now.year(), now.month(), now.day(), now.dayOfTheWeek(), now.hour(), now.minute(), now.second());
-                break;
-            case SystemMode::Idle:
-                display->updateTimeDisplay(now.hour(), now.minute(), now.second());
-                break;
-            }
-            break;
-        case SystemState::Standby:
-            switch (systemMode)
-            {
-            case SystemMode::Idle:
-                display->standbyDisplay(now.year(), now.month(), now.day(), now.hour(), now.minute(), now.second(), rtc->getTemperature(), 25.0f);
-                break;
-            case SystemMode::DateSet:
-                display->dateSetDisplay(now.year(), now.month(), now.day(), now.hour(), now.minute(), now.second(), now.second() % 2 == 0);
-                break;
-            case SystemMode::MonthSet:
-                display->monthSetDisplay(now.year(), now.month(), now.day(), now.hour(), now.minute(), now.second(), now.second() % 2 == 0);
-                break;
-            case SystemMode::YearSet:
-                display->yearSetDisplay(now.year(), now.month(), now.day(), now.hour(), now.minute(), now.second(), now.second() % 2 == 0);
-                break;
-            case SystemMode::HourSet:
-                display->hourSetDisplay(now.year(), now.month(), now.day(), now.hour(), now.minute(), now.second(), now.second() % 2 == 0);
-                break;
-            case SystemMode::MinuteSet:
-                display->minuteSetDisplay(now.year(), now.month(), now.day(), now.hour(), now.minute(), now.second(), now.second() % 2 == 0);
-                break;
-            }
-            break;
-        default:
-            break;
-        }
-    }
-
     void storeRadioStation(uint8_t slot)
     {
 #ifdef RADIO_ENABLED
@@ -534,6 +510,7 @@ private:
     {
 #ifdef RADIO_ENABLED
         radio.setFrequency(savedStations[(int)band][slot]);
+        RDSClear();
 #endif
         isCurrentStationSaved = true;
         currentSavedStationBand = band;
@@ -626,11 +603,16 @@ private:
         uint8_t rear = fade > 0 ? fade : 0;
 
         // Apply the volume to each speaker
-        tda->attLF(12 - (left + front));
-        tda->attRF(12 - (right + front));
+        // tda->attLF(12 - (left + front));
+        // tda->attRF(12 - (right + front));
 
-        tda->attLR(12 - (left + rear));
-        tda->attRR(12 - (right + rear));
+        // tda->attLR(12 - (left + rear));
+        // tda->attRR(12 - (right + rear));
+
+        tda->attLF(12);
+        tda->attRF(12);
+        tda->attLR(12);
+        tda->attRR(12);
     }
 
     void BT201AudioModeChanged()
@@ -700,12 +682,111 @@ private:
         }
     }
 
+    void everySecondUpdate()
+    {
+        updateDateTime();
+        updateTemperature();
+        updateCallerNumber();
+    }
+
+    void updateDateTime()
+    {
+        DateTime now = rtc->now();
+        switch (systemState)
+        {
+        case SystemState::On:
+            switch (systemMode)
+            {
+            case SystemMode::ShowFullDateTime:
+                display->fullDateTimeDisplay(now.year(), now.month(), now.day(), now.dayOfTheWeek(), now.hour(), now.minute(), now.second());
+                break;
+            case SystemMode::Idle:
+                display->updateTimeDisplay(now.hour(), now.minute(), now.second());
+                break;
+            }
+            break;
+        case SystemState::Standby:
+            switch (systemMode)
+            {
+            case SystemMode::Idle:
+                display->standbyDisplay(now.year(), now.month(), now.day(), now.hour(), now.minute(), now.second(), rtc->getTemperature(), 25.0f);
+                break;
+            case SystemMode::DateSet:
+                display->dateSetDisplay(now.year(), now.month(), now.day(), now.hour(), now.minute(), now.second(), now.second() % 2 == 0);
+                break;
+            case SystemMode::MonthSet:
+                display->monthSetDisplay(now.year(), now.month(), now.day(), now.hour(), now.minute(), now.second(), now.second() % 2 == 0);
+                break;
+            case SystemMode::YearSet:
+                display->yearSetDisplay(now.year(), now.month(), now.day(), now.hour(), now.minute(), now.second(), now.second() % 2 == 0);
+                break;
+            case SystemMode::HourSet:
+                display->hourSetDisplay(now.year(), now.month(), now.day(), now.hour(), now.minute(), now.second(), now.second() % 2 == 0);
+                break;
+            case SystemMode::MinuteSet:
+                display->minuteSetDisplay(now.year(), now.month(), now.day(), now.hour(), now.minute(), now.second(), now.second() % 2 == 0);
+                break;
+            }
+            break;
+        default:
+            break;
+        }
+    }
+
+    void updateTemperature()
+    {
+        switch(systemState)
+        {
+            case SystemState::On:
+                if(systemMode == SystemMode::Idle)
+                {
+                    display->updateTemperatureDisplay(analogRead(S_TEMPERATURE));
+                }
+                break;
+            case SystemState::Standby:
+                break;
+        }
+    }
+
     void updateCallerNumber()
     {
         // Also update the caller number for bluetooth calls once every second
         if ((currentBT201Status == BluetoothStatus::Phone || currentBT201Status == BluetoothStatus::PhoneTalking) && systemMode == SystemMode::Idle)
         {
             updateSystemMode(SystemMode::Idle);
+        }
+    }
+
+    void updateBrightness()
+    {
+        if(millis() - previousLightSampleTime < LIGHT_SAMPLE_INTERVAL)
+        {
+            return;
+        }
+
+        // Reset interval counter
+        previousLightSampleTime = millis();
+        
+        // Take sample
+        lightSampleCount ++;
+        lightSamplesValue += analogRead(S_LIGHT);
+
+
+        //Check if we need to reset
+        if(lightSampleCount >= MAX_LIGHT_SAMPLES)
+        {
+            float lightValue = (float)lightSamplesValue / (float)lightSampleCount;
+
+            lightSampleCount = 0;
+            lightSamplesValue = 0;
+
+            lightValue = constrain(lightValue, MIN_LIGHT_SENSOR_VALUE, MAX_LIGHT_SENSOR_VALUE);
+
+            lightValue = map(lightValue, MIN_LIGHT_SENSOR_VALUE, MAX_LIGHT_SENSOR_VALUE, MIN_LCD_BRIGHTNESS, MAX_LCD_BRIGHTNESS);
+
+            setBacklightBrightness(lightValue);
+
+            return;
         }
     }
 
@@ -736,7 +817,7 @@ public:
         hasDelayStarted = false;
         delayMode = SystemMode::Idle;
 
-        timeUpdateDelay = new AsyncDelayHelper();
+        everySecondDelay = new AsyncDelayHelper();
 
         // Radio
         // this.rdsParser = rdsParser;
@@ -774,8 +855,8 @@ public:
         analogWrite(BTN_BACKLIGHT, 0);
 
         // Input sensors
-        pinMode(S_TEMPERATURE, INPUT_PULLDOWN);
-        pinMode(S_LIGHT, INPUT_PULLDOWN);
+        pinMode(S_TEMPERATURE, INPUT);
+        pinMode(S_LIGHT, INPUT);
 
         delay(200);
         DEBUG_LOG("System initializing... Setting up LEDc\n");
@@ -803,7 +884,7 @@ public:
         // Serial2.begin(115200, SERIAL_8N1, RXD2, TXD2);
 
         // Start delay helpers
-        timeUpdateDelay->startDelay(1000);
+        everySecondDelay->startDelay(1000);
 
         DEBUG_LOG("System initialized\n");
     }
@@ -814,7 +895,6 @@ public:
 #ifdef RADIO_ENABLED
         // radio.checkRDS();
 #endif
-
         // Update BT201 state
         if (systemState == SystemState::On)
         {
@@ -843,14 +923,12 @@ public:
         // Async Updates for Time/Temp/Brightness (Only while system is on or idle)
         if (systemState != SystemState::Off)
         {
-            timeUpdateDelay->loop();
-            if (timeUpdateDelay->hasDelayFinisedThisLoop())
+            everySecondDelay->loop();
+            if (everySecondDelay->hasDelayFinisedThisLoop())
             {
-                updateDateTime();
+                everySecondUpdate();
 
-                updateCallerNumber();
-
-                timeUpdateDelay->restartDelay();
+                everySecondDelay->restartDelay();
             }
         }
     
@@ -859,8 +937,30 @@ public:
         {
             otaUpdater->loop();
         }
+    
+        // Update radio rds
+        if(systemState == SystemState::On)
+        {
+            if(audioSource == AudioSource::Radio)
+            {
+                radio.checkRDS();
+
+                // Clear rds after timeout
+                if((rdsRadioText != nullptr && !rdsRadioText.isEmpty()) || (rdsServiceName != nullptr && !rdsServiceName.isEmpty()))
+                {
+                    if(millis() - lastRDSUpdate > RDS_TIMEOUT)
+                    {
+                        RDSClear();
+                    }
+                }
+            }
+        }
+
+        // Update brightness
+        updateBrightness();
     }
 
+    // Set backlight brightness [0-255]
     void setBacklightBrightness(uint8_t val)
     {
         ledcWrite(BCK_LED_CHANNEL, val);
@@ -935,26 +1035,38 @@ public:
         return false;
     }
 
-    // static void RDSProcess(uint16_t block1, uint16_t block2, uint16_t block3, uint16_t block4)
-    // {
-    //     rdsParser->processData(block1, block2, block3, block4);
-    // }
+    void RDSProcess(uint16_t block1, uint16_t block2, uint16_t block3, uint16_t block4)
+    {
+        rdsParser.processData(block1, block2, block3, block4);
+    }
 
-    // static void RDSServiceNameUpdate(const char *serviceName)
-    // {
-    //     rdsServiceName = serviceName;
-    // }
+    void RDSServiceNameUpdate(const char *serviceName)
+    {
+        rdsServiceName = serviceName;
+        RDSUpdated();
+    }
 
-    // static void RDSRadioTextUpdate(const char *radioText)
-    // {
-    //     rdsRadioText = radioText;
-    // }
+    void RDSRadioTextUpdate(const char *radioText)
+    {
+        rdsRadioText = radioText;
+        RDSUpdated();
+    }
 
-    // static void RDSClear()
-    // {
-    //     rdsServiceName = "";
-    //     rdsRadioText = "";
-    // }
+    void RDSClear()
+    {
+        rdsServiceName = "";
+        rdsRadioText = "";
+        RDSUpdated();
+    }
+
+    void RDSUpdated()
+    {
+        lastRDSUpdate = millis();
+        if(systemMode == SystemMode::Idle)
+        {
+            updateSystemMode(SystemMode::Idle); // Update display with new rds data.
+        }
+    }
 
 // System Functions
 #pragma region Functions
@@ -1005,6 +1117,7 @@ public:
         case SystemState::Standby:
             updateSystemState(SystemState::On);
             break;
+        case SystemState::Update:
         case SystemState::On:
             if (ignitionState)
             {
@@ -1361,6 +1474,7 @@ public:
                 radio.seekDown();
             else
                 radio.setFrequency(radio.getFrequency() - 10);
+            RDSClear();
 #endif
             isCurrentStationSaved = false;
             updateSystemMode(SystemMode::Idle);
@@ -1390,6 +1504,7 @@ public:
                 radio.seekUp();
             else
                 radio.setFrequency(radio.getFrequency() + 10);
+            RDSClear();
 #endif
             isCurrentStationSaved = false;
             updateSystemMode(SystemMode::Idle);

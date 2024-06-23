@@ -38,16 +38,16 @@ void RDSParser::init() {
 }  // init()
 
 
-void RDSParser::attachServiceNameCallback(receiveServiceNameFunction newFunction) {
+void RDSParser::attachServiceNameCallback(TRDSServiceNameCallback newFunction) {
   _sendServiceName = newFunction;
 }  // attachServiceNameCallback
 
-void RDSParser::attachTextCallback(receiveTextFunction newFunction) {
+void RDSParser::attachTextCallback(TRDSTextCallback newFunction) {
   _sendText = newFunction;
 }  // attachTextCallback
 
 
-void RDSParser::attachTimeCallback(receiveTimeFunction newFunction) {
+void RDSParser::attachTimeCallback(TRDSTimeCallback newFunction) {
   _sendTime = newFunction;
 }  // attachTimeCallback
 

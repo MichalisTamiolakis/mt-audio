@@ -58,6 +58,7 @@
 
 #include <Arduino.h>
 #include <Wire.h>
+#include <functional>
 
 #define UNUSED __attribute__((unused))
 
@@ -145,9 +146,7 @@
 // ----- Callback function types -----
 
 /// callback function for passing RDS data.
-extern "C" {
-  typedef void (*receiveRDSFunction)(uint16_t block1, uint16_t block2, uint16_t block3, uint16_t block4);
-}
+typedef std::function<void(uint16_t block1, uint16_t block2, uint16_t block3, uint16_t block4)> TReceiveRDSFunction;
 
 
 // ----- type definitions -----
@@ -272,7 +271,7 @@ public:
 
   // ----- Supporting RDS for FM bands -----
 
-  virtual void attachReceiveRDS(receiveRDSFunction newFunction);  ///< Register a RDS processor function.
+  virtual void attachReceiveRDS(TReceiveRDSFunction newFunction);  ///< Register a RDS processor function.
   virtual void checkRDS();                                        ///< Check if RDS Data is available and good.
   virtual void clearRDS();                                        ///< Clear RDS data in the attached RDS Receiver by sending 0,0,0,0.
 
@@ -359,7 +358,7 @@ protected:
   RADIO_FREQ _freqHigh;   ///< Highest frequency of the current selected band.
   RADIO_FREQ _freqSteps;  ///< Resolution of the tuner.
 
-  receiveRDSFunction _sendRDS;  ///< Registered RDS Function that is called on new available data.
+  TReceiveRDSFunction _sendRDS;  ///< Registered RDS Function that is called on new available data.
 
   void _printHex2(uint8_t val);   ///< Prints a byte as 2 character hexadecimal code with leading zeros.
   void _printHex4(uint16_t val);  ///< Prints a register as 4 character hexadecimal code with leading zeros.

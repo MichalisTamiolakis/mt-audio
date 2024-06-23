@@ -611,7 +611,7 @@ void SI47xx::getAudioInfo(AUDIO_INFO *info) {
 
 
 // initialize RDS mode
-void SI47xx::attachReceiveRDS(receiveRDSFunction newFunction) {
+void SI47xx::attachReceiveRDS(TReceiveRDSFunction newFunction) {
   DEBUG_FUNC0("attachReceiveRDS");
 
   if (_hasRDS) {

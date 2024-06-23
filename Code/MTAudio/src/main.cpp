@@ -34,7 +34,7 @@
 // Ignition Sensing pin
 #define S_IGNITION 32
 
-System system = System();
+System mainSystem = System();
 
 // All the buttons
 SingleButton *powerBtn;
@@ -62,162 +62,162 @@ bool previousIgnitionState;
 #pragma region ButtonCallbacks
 void ignitionOn()
 {
-    system.ignitionOn();
+    mainSystem.ignitionOn();
 }
 
 void ignitionOff()
 {
-    system.ignitionOff();
+    mainSystem.ignitionOff();
 }
 
 void togglePower()
 {
-    system.togglePower();
+    mainSystem.togglePower();
 }
 
 void toggleUpdateMode()
 {
-    system.toggleUpdateMode();
+    mainSystem.toggleUpdateMode();
 }
 
 void onClockSetBtn()
 {
-    system.enterClockSetMode();
+    mainSystem.enterClockSetMode();
 }
 
 void onDisplayFullDateButton()
 {
-    system.displayFullDate();
+    mainSystem.displayFullDate();
 }
 
 void onClockFuncBtn()
 {
-    system.clockFunction();
+    mainSystem.clockFunction();
 }
 
 void increaseVolume()
 {
-    system.increaseVolume();
+    mainSystem.increaseVolume();
 }
 
 void decreaseVolume()
 {
-    system.decreaseVolume();
+    mainSystem.decreaseVolume();
 }
 
 void openBassAndBalanceSettings()
 {
-    system.openBassAndBalanceSettings();
+    mainSystem.openBassAndBalanceSettings();
 }
 
 void openTrebleAndFadeSettings()
 {
-    system.openTrebleAndFadeSettings();
+    mainSystem.openTrebleAndFadeSettings();
 }
 
 void toggleBassBoost()
 {
-    system.selectBestStationsBand();
+    mainSystem.selectBestStationsBand();
 }
 
 void toggleLoudness()
 {
-    system.toggleLoudness();
+    mainSystem.toggleLoudness();
 }
 
 void toggleTraficAnnouncements()
 {
-    system.toggleTrafficAnnouncements();
+    mainSystem.toggleTrafficAnnouncements();
 }
 
 void onDownBtn()
 {
-    system.onDownBtn();
+    mainSystem.onDownBtn();
 }
 
 void onUpBtn()
 {
-    system.onUpBtn();
+    mainSystem.onUpBtn();
 }
 
 void toggleSeekMode()
 {
-    system.toggleSeekMode();
+    mainSystem.toggleSeekMode();
 }
 
 void selectNextInput()
 {
-    system.selectNextInput();
+    mainSystem.selectNextInput();
 }
 
 void findBestStations()
 {
-    system.findBestStations();
+    mainSystem.findBestStations();
 }
 
 void switchToAutomaticStationsBand()
 {
-    system.switchToAutomaticStationsBand();
+    mainSystem.switchToAutomaticStationsBand();
 }
 
 void selectStationN1()
 {
-    system.selectStationN1();
+    mainSystem.selectStationN1();
 }
 
 void saveStationToN1()
 {
-    system.saveStationToN1();
+    mainSystem.saveStationToN1();
 }
 
 void selectStationN2()
 {
-    system.selectStationN2();
+    mainSystem.selectStationN2();
 }
 
 void saveStationToN2()
 {
-    system.saveStationToN2();
+    mainSystem.saveStationToN2();
 }
 
 void selectStationN3()
 {
-    system.selectStationN3();
+    mainSystem.selectStationN3();
 }
 
 void saveStationToN3()
 {
-    system.saveStationToN3();
+    mainSystem.saveStationToN3();
 }
 
 void selectStationN4()
 {
-    system.selectStationN4();
+    mainSystem.selectStationN4();
 }
 
 void saveStationToN4()
 {
-    system.saveStationToN4();
+    mainSystem.saveStationToN4();
 }
 
 void selectStationN5()
 {
-    system.selectStationN5();
+    mainSystem.selectStationN5();
 }
 
 void saveStationToN5()
 {
-    system.saveStationToN5();
+    mainSystem.saveStationToN5();
 }
 
 void selectStationN6()
 {
-    system.selectStationN6();
+    mainSystem.selectStationN6();
 }
 
 void saveStationToN6()
 {
-    system.saveStationToN6();
+    mainSystem.saveStationToN6();
 }
 #pragma endregion
 
@@ -320,7 +320,7 @@ void setup()
     pinMode(S_IGNITION, INPUT_PULLDOWN);
 
     delay(1000);
-    system.init();
+    mainSystem.init();
 
     delay(1000);
     initButtons();
@@ -348,6 +348,6 @@ void loop()
         }
     }
 
-    system.update();
+    mainSystem.update();
     updateButtons();
 }
