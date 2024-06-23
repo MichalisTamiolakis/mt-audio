@@ -3,6 +3,7 @@
 
 #define SSID_FORMAT "MT WebUpdate" 
 #define PASSWORD "0123456789"
+#define MDNS_NAME "mt-audio"
 
 OTAUpdater::OTAUpdater()
 {
@@ -31,7 +32,7 @@ void OTAUpdater::apMode() {
   snprintf(passwd, 11, PASSWORD);
   WiFi.mode(WIFI_AP);
   WiFi.softAP(ssid, passwd);  // Set up the SoftAP
-  MDNS.begin("esp32");
+  MDNS.begin(MDNS_NAME);
   Serial.printf("AP: %s, PASS: %s\n", ssid, passwd);
 }
 
@@ -85,10 +86,6 @@ void OTAUpdater::webServerInit() {
       handleUpdate();
     }
   );
-//   server.on("/favicon.ico", HTTP_GET, []() {
-//     server.sendHeader("Content-Encoding", "gzip");
-//     server.send_P(200, "image/x-icon", favicon_ico_gz, favicon_ico_gz_len);
-//   });
   server->onNotFound([this]() {
     server->send(200, "text/html", indexHtml);
   });

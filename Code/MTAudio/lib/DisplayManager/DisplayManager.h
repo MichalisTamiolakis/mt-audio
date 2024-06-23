@@ -187,7 +187,7 @@ public:
         lcd->setCursor(0,1);
         lcd->print("      MT Audio      ");
         lcd->setCursor(0, 2);
-        lcd->print("     v1.1.0  by     ");
+        lcd->print("     v1.2.0  by     ");
         lcd->setCursor(0, 3);
         lcd->print("Michalis Tamiolakis ");
     }
@@ -512,7 +512,8 @@ public:
         lcd->print("    Update Mode     ");
         lcd->setCursor(0,2);
         lcd->print("   P/W: 012345678   ");
-        clearLine(3);
+        lcd->setCursor(0,2);
+        lcd->print("Visit:mt-audio.local");
     }
 
 private:
