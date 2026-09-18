@@ -53,3 +53,7 @@ Located under [`Code/MTAudio`](./Code/MTAudio), built with **PlatformIO** on the
 ## Architecture
 
 The firmware is built around a central `System` class implementing a state machine (`SystemState`: Off / On / Standby / Update) and a mode machine (`SystemMode`: Idle, Volume, Bass, Balance, Treble, Fade, Loudness, station save/select, date/time set, and more) that together drive what's shown on the LCD and how button input is interpreted - closely mirroring how a real factory head unit behaves, including remembering the pre-ignition-off state and resuming it when the ignition turns back on.
+
+## License
+
+Distributed under the MIT License. See [`LICENSE`](./LICENSE) for details.
