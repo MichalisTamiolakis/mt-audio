@@ -1,6 +1,6 @@
 # MT-Audio
 
-A custom-built, **ESP32-powered car head unit** — a full replacement car stereo with FM radio (RDS), Bluetooth, USB, SD-card, and Aux inputs, a hardware EQ, and a real-time clock, all driven by custom firmware and mounted on a custom PCB.
+A custom-built, **ESP32-powered car head unit** - a full replacement car stereo with FM radio (RDS), Bluetooth, USB, SD-card, and Aux inputs, a hardware EQ, and a real-time clock, all driven by custom firmware and mounted on a custom PCB.
 
 ## Overview
 
@@ -46,8 +46,8 @@ Located under [`Code/MTAudio`](./Code/MTAudio), built with **PlatformIO** on the
 1. Install [PlatformIO](https://platformio.org/) (e.g. via the VS Code extension).
 2. Open the [`Code/MTAudio`](./Code/MTAudio) folder as a PlatformIO project.
 3. Build/upload one of the two environments:
-   - `esp32doit-devkit-v1-debug` — debug build with serial logging enabled
-   - `esp32doit-devkit-v1-release` — release build
+   - `esp32doit-devkit-v1-debug` - debug build with serial logging enabled
+   - `esp32doit-devkit-v1-release` - release build
 4. Flash to an ESP32 wired according to the schematics in [`Schematics`](./Schematics).
 
 ## Architecture
